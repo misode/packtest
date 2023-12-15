@@ -3,6 +3,7 @@
 	"package": "io.github.misode.packtest.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
+		"GameTestRegistryMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
