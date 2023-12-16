@@ -1,14 +1,15 @@
 package io.github.misode.packtest;
 
+import io.github.misode.packtest.commands.FailCommand;
 import net.fabricmc.api.ModInitializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 
 public class PackTest implements ModInitializer {
-    public static final Logger LOGGER = LoggerFactory.getLogger("packtest");
 
 	@Override
 	public void onInitialize() {
-		LOGGER.info("Initialized");
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+			FailCommand.register(dispatcher);
+		});
 	}
 }

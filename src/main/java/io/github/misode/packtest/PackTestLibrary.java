@@ -9,7 +9,6 @@ import net.minecraft.commands.functions.InstantiatedFunction;
 import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
@@ -20,6 +19,8 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -30,8 +31,12 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 public class PackTestLibrary implements PreparableReloadListener {
+    public static final Logger LOGGER = LoggerFactory.getLogger("packtest");
     public static final PackTestLibrary INSTANCE = new PackTestLibrary(2, new CommandDispatcher<>());
     private static final FileToIdConverter LISTER = new FileToIdConverter("tests", ".mcfunction");
     private static final String BATCH_NAME = "packtestBatch";
@@ -40,6 +45,7 @@ public class PackTestLibrary implements PreparableReloadListener {
     private CommandDispatcher<CommandSourceStack> dispatcher;
     private Collection<TestFunction> tests = Lists.newArrayList();
     private Set<String> namespaces = Sets.newHashSet();
+    private Consumer<String> messageConsumer = null;
 
     public PackTestLibrary(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
         this.permissionLevel = permissionLevel;
@@ -52,6 +58,10 @@ public class PackTestLibrary implements PreparableReloadListener {
 
     public void setDispatcher(CommandDispatcher<CommandSourceStack> dispatcher) {
         this.dispatcher = dispatcher;
+    }
+
+    public void failMessage(String message) {
+        this.messageConsumer.accept(message);
     }
 
     @Override
@@ -79,7 +89,7 @@ public class PackTestLibrary implements PreparableReloadListener {
             ImmutableSet.Builder<String> namespacesBuilder = ImmutableSet.builder();
             functions.forEach((id, future) -> future.handle((val, err) -> {
                 if (err != null) {
-                    PackTest.LOGGER.error("Failed to load test {}", id, err);
+                    LOGGER.error("Failed to load test {}", id, err);
                 } else {
                     testsBuilder.add(toTestFunction(val));
                     namespacesBuilder.add(id.getNamespace());
@@ -88,7 +98,7 @@ public class PackTestLibrary implements PreparableReloadListener {
             }).join());
             this.tests = testsBuilder.build();
             this.namespaces = namespacesBuilder.build();
-            PackTest.LOGGER.info("Loaded {} tests", this.tests.size());
+            LOGGER.info("Loaded {} tests", this.tests.size());
         });
     }
 
@@ -108,35 +118,33 @@ public class PackTestLibrary implements PreparableReloadListener {
         }
     }
 
-    private TestFunction toTestFunction(CommandFunction<CommandSourceStack> function) {
-        String testName = function.id().toLanguageKey();
+    private TestFunction toTestFunction(CommandFunction<CommandSourceStack> commandFn) {
+        String testName = commandFn.id().toLanguageKey();
         String structureName = "fabric-gametest-api-v1:empty";
         Rotation rotation = StructureUtils.getRotationForRotationSteps(0);
 
         return new TestFunction(BATCH_NAME, testName, structureName, rotation, 100, 0L, true, 1, 1, (helper) -> {
-            CommandSourceStack sourceStack = new CommandSourceStack(
-                    helper.getLevel().getServer(),
-                    helper.absoluteVec(Vec3.ZERO),
-                    Vec2.ZERO,
-                    helper.getLevel(),
-                    this.permissionLevel,
-                    "Tests",
-                    Component.literal("Tests"),
-                    helper.getLevel().getServer(),
-                    null
-            );
+            AtomicBoolean hasFailed = new AtomicBoolean(false);
+            CommandSourceStack sourceStack = helper.getLevel().getServer().createCommandSourceStack()
+                    .withPosition(helper.absoluteVec(Vec3.ZERO))
+                    .withPermission(this.permissionLevel)
+                    .withSuppressedOutput()
+                    .withCallback((success, result) -> hasFailed.set(!success));
             try {
-                InstantiatedFunction<CommandSourceStack> instantiatedFunction = function.instantiate(null, this.dispatcher, sourceStack);
+                AtomicReference<String> failMessage = new AtomicReference<>("Test failed");
+                this.messageConsumer = failMessage::set;
+                InstantiatedFunction<CommandSourceStack> instantiatedFn = commandFn.instantiate(null, this.dispatcher, sourceStack);
                 Commands.executeCommandInContext(sourceStack, execution -> {
-                    ExecutionContext.queueInitialFunctionCall(execution, instantiatedFunction, sourceStack, CommandResultCallback.EMPTY);
+                    ExecutionContext.queueInitialFunctionCall(execution, instantiatedFn, sourceStack, CommandResultCallback.EMPTY);
                 });
-                helper.succeed();
+                if (hasFailed.get()) {
+                    helper.fail(failMessage.toString());
+                } else {
+                    helper.succeed();
+                }
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
                 helper.fail("Failed to instantiate test function: " + message);
-            } catch (Exception e) {
-                helper.fail("Failed to execute test function");
-                PackTest.LOGGER.warn("Failed to execute test function {}", function.id(), e);
             }
         });
     }
