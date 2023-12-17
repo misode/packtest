@@ -88,7 +88,6 @@ public class PackTestFunction {
     }
 
     public TestFunction toTestFunction(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
-        PackTest.LOGGER.info("TIMEOUT {}", this.getTimeout());
         return new TestFunction(
                 this.getBatchName(),
                 this.getTestName(),
