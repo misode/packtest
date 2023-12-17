@@ -1,5 +1,6 @@
 package io.github.misode.packtest;
 
+import io.github.misode.packtest.commands.AssertCommand;
 import io.github.misode.packtest.commands.FailCommand;
 import io.github.misode.packtest.commands.SucceedCommand;
 import net.fabricmc.api.ModInitializer;
@@ -12,7 +13,8 @@ public class PackTest implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
+		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
+			AssertCommand.register(dispatcher, buildContext);
 			FailCommand.register(dispatcher);
 			SucceedCommand.register(dispatcher);
 		});

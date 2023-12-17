@@ -85,7 +85,7 @@ public class PackTestFunction {
 
             AtomicBoolean hasFailed = new AtomicBoolean(false);
             CommandSourceStack sourceStack = helper.getLevel().getServer().createCommandSourceStack()
-                    .withPosition(helper.absoluteVec(Vec3.ZERO))
+                    .withPosition(helper.absoluteVec(Vec3.ZERO).add(0, 1, 0))
                     .withPermission(permissionLevel)
                     .withSuppressedOutput()
                     .withCallback((success, result) -> hasFailed.set(!success));

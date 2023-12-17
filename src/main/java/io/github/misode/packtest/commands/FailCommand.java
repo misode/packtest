@@ -20,10 +20,10 @@ import static net.minecraft.commands.Commands.literal;
 public class FailCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("fail")
-            .requires(ctx -> ctx.hasPermission(2))
-            .then(argument("message", ComponentArgument.textComponent())
-                .executes(new FailCommand.FailCustomExecutor())
-            )
+                .requires(ctx -> ctx.hasPermission(2))
+                .then(argument("message", ComponentArgument.textComponent())
+                        .executes(new FailCommand.FailCustomExecutor())
+                )
         );
     }
 
