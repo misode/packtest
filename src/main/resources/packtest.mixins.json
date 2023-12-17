@@ -3,7 +3,10 @@
 	"package": "io.github.misode.packtest.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
+		"ArgumentTypeInfosMixin",
+		"CommandsMixin",
 		"GameTestRegistryMixin",
+		"MinecraftServerMixin",
 		"ReloadableServerResourcesMixin"
 	],
 	"injectors": {

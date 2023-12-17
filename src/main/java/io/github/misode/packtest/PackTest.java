@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PackTest implements ModInitializer {
-	public static final Logger LOGGER = LoggerFactory.getLogger("packtest");
+	public static final Logger LOGGER = LoggerFactory.getLogger(PackTest.class);
 
 	@Override
 	public void onInitialize() {
