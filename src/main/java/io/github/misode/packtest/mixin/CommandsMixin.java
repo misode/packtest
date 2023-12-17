@@ -13,7 +13,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(Commands.class)
+import java.util.List;
+
+/**
+ * Enables the /tick command outside the IDE environment
+ */
+@Mixin(value = Commands.class, priority = 1500)
 public class CommandsMixin {
     @Shadow
     @Final
@@ -21,7 +26,8 @@ public class CommandsMixin {
 
     @Inject(method = "<init>", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/commands/WorldBorderCommand;register(Lcom/mojang/brigadier/CommandDispatcher;)V", shift = At.Shift.AFTER))
     private void init(Commands.CommandSelection selection, CommandBuildContext buildContext, CallbackInfo info) {
-        if (!SharedConstants.IS_RUNNING_IN_IDE) {
+        boolean exists = this.dispatcher.findNode(List.of("test")) != null;
+        if (!exists && !SharedConstants.IS_RUNNING_IN_IDE) {
             TestCommand.register(this.dispatcher);
         }
     }

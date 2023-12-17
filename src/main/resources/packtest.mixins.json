@@ -11,6 +11,9 @@
 		"ReloadableServerResourcesMixin",
 		"TestCommandMixin"
 	],
+	"server": [
+		"server.MainMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	}

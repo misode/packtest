@@ -10,6 +10,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.function.BooleanSupplier;
 
+/**
+ * Tick the game tests outside the IDE environment
+ */
 @Mixin(MinecraftServer.class)
 public class MinecraftServerMixin {
     @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/ServerTickRateManager;tick()V", shift = At.Shift.AFTER))

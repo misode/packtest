@@ -17,6 +17,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Adds {@link PackTestLibrary} to the /reload listeners and give it the permissionLevel and dispatcher
+ */
 @Mixin(ReloadableServerResources.class)
 public class ReloadableServerResourcesMixin {
 

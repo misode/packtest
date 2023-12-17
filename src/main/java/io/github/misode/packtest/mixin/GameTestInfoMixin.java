@@ -10,6 +10,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+/**
+ * Registers the {@link GameTestHelper} for each test so custom commands can access it
+ */
 @Mixin(GameTestInfo.class)
 public class GameTestInfoMixin {
     @Shadow

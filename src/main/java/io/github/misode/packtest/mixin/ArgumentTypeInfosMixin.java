@@ -8,12 +8,16 @@ import net.minecraft.commands.synchronization.SingletonArgumentInfo;
 import net.minecraft.core.Registry;
 import net.minecraft.gametest.framework.TestClassNameArgument;
 import net.minecraft.gametest.framework.TestFunctionArgument;
+import net.minecraft.resources.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+/**
+ * Enables the tick command arguments outside the IDE environment
+ */
 @Mixin(value = ArgumentTypeInfos.class, priority = 1500)
 public class ArgumentTypeInfosMixin {
     @Shadow
@@ -24,10 +28,12 @@ public class ArgumentTypeInfosMixin {
     @Inject(method = "bootstrap", at = @At("RETURN"))
     private static <A extends ArgumentType<?>, T extends ArgumentTypeInfo.Template<A>> void bootstrap(Registry<ArgumentTypeInfo<?, ?>> registry, CallbackInfoReturnable<ArgumentTypeInfo<A, T>> cir) {
         if (!SharedConstants.IS_RUNNING_IN_IDE) {
-            try {
+            if (!registry.containsKey(new ResourceLocation("test_argument"))) {
                 register(registry, "test_argument", TestFunctionArgument.class, SingletonArgumentInfo.contextFree(TestFunctionArgument::testFunctionArgument));
+            }
+            if (!registry.containsKey(new ResourceLocation("test_class"))) {
                 register(registry, "test_class", TestClassNameArgument.class, SingletonArgumentInfo.contextFree(TestClassNameArgument::testClassName));
-            } catch (RuntimeException ignored) {}
+            }
         }
     }
 }

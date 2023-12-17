@@ -15,6 +15,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+/**
+ * Make it so the test functions from the {@link PackTestLibrary} are also included when running /test
+ */
 @Mixin(GameTestRegistry.class)
 public class GameTestRegistryMixin {
 
