@@ -12,9 +12,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
@@ -24,12 +26,16 @@ public class PackTestFunction {
     private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("#\\s*@(\\w+)\\s+(\\S+)");
     private static final String DEFAULT_BATCH = "packtestBatch";
     private static final String DEFAULT_TEMPLATE = "packtest:empty";
-    private final String templateName;
-    private final CommandFunction<CommandSourceStack> function;
+    private final ResourceLocation id;
+    private final Map<String, String> directives;
+    private final @Nullable CommandFunction<CommandSourceStack> function;
+    private final @Nullable String parseError;
 
-    public PackTestFunction(String templateName, CommandFunction<CommandSourceStack> function) {
-        this.templateName = templateName;
+    public PackTestFunction(ResourceLocation id, Map<String, String> directives, @Nullable CommandFunction<CommandSourceStack> function, @Nullable String parseError) {
+        this.id = id;
+        this.directives = directives;
         this.function = function;
+        this.parseError = parseError;
     }
 
     public static PackTestFunction fromLines(ResourceLocation id, CommandDispatcher<CommandSourceStack> dispatcher, List<String> lines) {
@@ -45,43 +51,63 @@ public class PackTestFunction {
                 directives.put(key, value);
             }
         }
-        String templateName = directives.getOrDefault("template", DEFAULT_TEMPLATE);
+
         CommandSourceStack sourceStack = new CommandSourceStack(
                 CommandSource.NULL, Vec3.ZERO, Vec2.ZERO, null, 2, "", CommonComponents.EMPTY, null, null
         );
-        CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, dispatcher, sourceStack, lines);
-        return new PackTestFunction(templateName, function);
+        CommandFunction<CommandSourceStack> function = null;
+        String parseError = null;
+        try {
+            function = CommandFunction.fromLines(id, dispatcher, sourceStack, lines);
+        } catch (IllegalArgumentException e) {
+            parseError = e.getMessage();
+        }
+
+        return new PackTestFunction(id, directives, function, parseError);
     }
 
     private String getTestName() {
-        return this.function.id().toLanguageKey();
+        return this.id.toLanguageKey();
+    }
+
+    private String getTemplateName() {
+        return this.directives.getOrDefault("template", DEFAULT_TEMPLATE);
     }
 
     public TestFunction toTestFunction(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
         Rotation rotation = StructureUtils.getRotationForRotationSteps(0);
 
-        return new TestFunction(DEFAULT_BATCH, this.getTestName(), this.templateName, rotation, 100, 0L, true, 1, 1, (helper) -> {
+        return new TestFunction(DEFAULT_BATCH, this.getTestName(), this.getTemplateName(), rotation, 100, 0L, true, 1, 1, (helper) -> {
+            if (function == null) {
+                helper.fail(this.parseError != null ? this.parseError : "Failed to parse test function");
+                return;
+            }
+
             AtomicBoolean hasFailed = new AtomicBoolean(false);
             CommandSourceStack sourceStack = helper.getLevel().getServer().createCommandSourceStack()
                     .withPosition(helper.absoluteVec(Vec3.ZERO))
                     .withPermission(permissionLevel)
                     .withSuppressedOutput()
                     .withCallback((success, result) -> hasFailed.set(!success));
+
+            AtomicReference<String> failMessage = new AtomicReference<>("Test failed");
+            PackTestLibrary.INSTANCE.setMessageConsumer(failMessage::set);
+
             try {
-                AtomicReference<String> failMessage = new AtomicReference<>("Test failed");
-                PackTestLibrary.INSTANCE.setMessageConsumer(failMessage::set);
                 InstantiatedFunction<CommandSourceStack> instantiatedFn = function.instantiate(null, dispatcher, sourceStack);
                 Commands.executeCommandInContext(sourceStack, execution -> {
                     ExecutionContext.queueInitialFunctionCall(execution, instantiatedFn, sourceStack, CommandResultCallback.EMPTY);
                 });
-                if (hasFailed.get()) {
-                    helper.fail(failMessage.toString());
-                } else {
-                    helper.succeed();
-                }
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
                 helper.fail("Failed to instantiate test function: " + message);
+                return;
+            }
+
+            if (hasFailed.get()) {
+                helper.fail(failMessage.toString());
+            } else {
+                helper.succeed();
             }
         });
     }
