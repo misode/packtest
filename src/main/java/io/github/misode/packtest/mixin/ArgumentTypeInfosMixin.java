@@ -1,6 +1,7 @@
 package io.github.misode.packtest.mixin;
 
 import com.mojang.brigadier.arguments.ArgumentType;
+import io.github.misode.packtest.PackTest;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.synchronization.ArgumentTypeInfo;
 import net.minecraft.commands.synchronization.ArgumentTypeInfos;
@@ -25,6 +26,8 @@ public class ArgumentTypeInfosMixin {
     @Inject(method = "bootstrap", at = @At("RETURN"))
     private static <A extends ArgumentType<?>, T extends ArgumentTypeInfo.Template<A>> void bootstrap(Registry<ArgumentTypeInfo<?, ?>> registry, CallbackInfoReturnable<ArgumentTypeInfo<A, T>> cir) {
         boolean exists = registry.containsKey(new ResourceLocation("test_argument"));
+        // Removing this log breaks this mixin for some reason
+        PackTest.LOGGER.debug("Command arguments exist: {}", exists);
         if (!exists && !SharedConstants.IS_RUNNING_IN_IDE) {
             register(registry, "test_argument", TestFunctionArgument.class, SingletonArgumentInfo.contextFree(TestFunctionArgument::testFunctionArgument));
             register(registry, "test_class", TestClassNameArgument.class, SingletonArgumentInfo.contextFree(TestClassNameArgument::testClassName));

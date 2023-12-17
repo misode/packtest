@@ -3,25 +3,27 @@ package io.github.misode.packtest;
 import com.google.common.collect.*;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.BlockPos;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestRegistry;
+import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.level.block.entity.StructureBlockEntity;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 
 public class PackTestLibrary implements PreparableReloadListener {
     public static final PackTestLibrary INSTANCE = new PackTestLibrary(2, new CommandDispatcher<>());
@@ -31,7 +33,7 @@ public class PackTestLibrary implements PreparableReloadListener {
     private CommandDispatcher<CommandSourceStack> dispatcher;
     private Collection<TestFunction> tests = Lists.newArrayList();
     private Set<String> namespaces = Sets.newHashSet();
-    private Consumer<String> messageConsumer = null;
+    private final Map<String, GameTestHelper> testHelperMap = Maps.newHashMap();
 
     public PackTestLibrary(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
         this.permissionLevel = permissionLevel;
@@ -46,12 +48,44 @@ public class PackTestLibrary implements PreparableReloadListener {
         this.dispatcher = dispatcher;
     }
 
-    public void failMessage(String message) {
-        this.messageConsumer.accept(message);
+    public void registerTestHelper(String testName, GameTestHelper helper) {
+        this.testHelperMap.put(testName, helper);
+    }
+    public void unregisterTestHelper(String testName) {
+        this.testHelperMap.remove(testName);
+    }
+    public Optional<GameTestHelper> getTestHelper(String testName) {
+        GameTestHelper helper = this.testHelperMap.get(testName);
+        if (helper == null) {
+            PackTest.LOGGER.warn("No helper registered for {}", testName);
+        }
+        return Optional.ofNullable(helper);
     }
 
-    public void setMessageConsumer(Consumer<String> consumer) {
-        this.messageConsumer = consumer;
+    public Optional<GameTestHelper> getHelperAt(CommandSourceStack sourceStack) {
+        BlockPos blockPos = BlockPos.containing(sourceStack.getPosition());
+        return getHelperAt(blockPos, sourceStack.getLevel());
+    }
+
+    public Optional<GameTestHelper> getHelperAt(BlockPos pos, ServerLevel level) {
+        Optional<BlockPos> structurePos = StructureUtils.findStructureBlockContainingPos(pos, 15, level);
+        if (structurePos.isEmpty()) {
+            PackTest.LOGGER.warn("No structure at {}", pos);
+            return Optional.empty();
+        }
+        StructureBlockEntity structureBlockEntity = (StructureBlockEntity)level.getBlockEntity(structurePos.get());
+        if (structureBlockEntity == null) {
+            PackTest.LOGGER.warn("No block entity at {}", structurePos);
+            return Optional.empty();
+        }
+        String metadata = structureBlockEntity.getMetaData();
+        Optional<TestFunction> testFunction = GameTestRegistry.findTestFunction(metadata);
+        if (testFunction.isEmpty()) {
+            PackTest.LOGGER.warn("No test function for {}", metadata);
+            return Optional.empty();
+        }
+        String testName = testFunction.get().getTestName();
+        return this.getTestHelper(testName);
     }
 
     @Override

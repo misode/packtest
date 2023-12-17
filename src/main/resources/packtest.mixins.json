@@ -5,6 +5,7 @@
 	"mixins": [
 		"ArgumentTypeInfosMixin",
 		"CommandsMixin",
+		"GameTestInfoMixin",
 		"GameTestRegistryMixin",
 		"MinecraftServerMixin",
 		"ReloadableServerResourcesMixin",

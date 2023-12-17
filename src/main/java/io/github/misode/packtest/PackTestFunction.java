@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -90,14 +89,13 @@ public class PackTestFunction {
                     .withSuppressedOutput()
                     .withCallback((success, result) -> hasFailed.set(!success));
 
-            AtomicReference<String> failMessage = new AtomicReference<>("Test failed");
-            PackTestLibrary.INSTANCE.setMessageConsumer(failMessage::set);
-
             try {
                 InstantiatedFunction<CommandSourceStack> instantiatedFn = function.instantiate(null, dispatcher, sourceStack);
-                Commands.executeCommandInContext(sourceStack, execution -> {
-                    ExecutionContext.queueInitialFunctionCall(execution, instantiatedFn, sourceStack, CommandResultCallback.EMPTY);
-                });
+                Commands.executeCommandInContext(sourceStack, execution -> ExecutionContext.queueInitialFunctionCall(
+                        execution,
+                        instantiatedFn,
+                        sourceStack,
+                        CommandResultCallback.EMPTY));
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
                 helper.fail("Failed to instantiate test function: " + message);
@@ -105,7 +103,7 @@ public class PackTestFunction {
             }
 
             if (hasFailed.get()) {
-                helper.fail(failMessage.toString());
+                helper.fail("Test failed without a message");
             } else {
                 helper.succeed();
             }

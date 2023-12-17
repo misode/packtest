@@ -30,17 +30,17 @@ public class FailCommand {
     static class FailCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {
         public void run(CommandSourceStack sourceStack, ContextChain<CommandSourceStack> chain, ChainModifiers modifiers, ExecutionControl<CommandSourceStack> execution) {
             CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
-            try {
-                Component message = ComponentUtils.updateForEntity(
-                        ctx.getSource(),
-                        ComponentArgument.getComponent(ctx, "message"),
-                        null,
-                        0
-                );
-                PackTestLibrary.INSTANCE.failMessage(message.getString());
-            } catch (CommandSyntaxException e) {
-                PackTestLibrary.INSTANCE.failMessage("Test failed without a message");
-            }
+            PackTestLibrary.INSTANCE.getHelperAt(sourceStack).ifPresent(helper -> {
+                try {
+                    Component message = ComponentUtils.updateForEntity(
+                            ctx.getSource(),
+                            ComponentArgument.getComponent(ctx, "message"),
+                            null,
+                            0
+                    );
+                    helper.fail(message.getString());
+                } catch (CommandSyntaxException ignored) {}
+            });
             sourceStack.callback().onFailure();
             Frame frame = execution.currentFrame();
             frame.returnFailure();

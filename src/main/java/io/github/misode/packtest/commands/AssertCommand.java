@@ -98,7 +98,8 @@ public class AssertCommand {
         public void run(CommandSourceStack sourceStack, ContextChain<CommandSourceStack> chain, ChainModifiers modifiers, ExecutionControl<CommandSourceStack> execution) {
             CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
             this.predicate.apply(ctx).ifPresent(message -> {
-                PackTestLibrary.INSTANCE.failMessage(message);
+                PackTestLibrary.INSTANCE.getHelperAt(sourceStack)
+                        .ifPresent(helper -> helper.fail(message));
                 sourceStack.callback().onFailure();
                 Frame frame = execution.currentFrame();
                 frame.returnFailure();
