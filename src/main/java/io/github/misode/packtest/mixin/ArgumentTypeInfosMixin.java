@@ -25,9 +25,10 @@ public class ArgumentTypeInfosMixin {
 
     @Inject(method = "bootstrap", at = @At("RETURN"))
     private static <A extends ArgumentType<?>, T extends ArgumentTypeInfo.Template<A>> void bootstrap(Registry<ArgumentTypeInfo<?, ?>> registry, CallbackInfoReturnable<ArgumentTypeInfo<A, T>> cir) {
-        boolean exists = registry.containsKey(new ResourceLocation("test_argument"));
+        boolean exists = registry.containsKey(new ResourceLocation("test_argument"))
+                || registry.containsKey(new ResourceLocation("test_class"));
         // Removing this log breaks this mixin for some reason
-        PackTest.LOGGER.debug("Command arguments exist: {}", exists);
+        PackTest.LOGGER.debug("Should register arguments: {} {}", exists, SharedConstants.IS_RUNNING_IN_IDE);
         if (!exists && !SharedConstants.IS_RUNNING_IN_IDE) {
             register(registry, "test_argument", TestFunctionArgument.class, SingletonArgumentInfo.contextFree(TestFunctionArgument::testFunctionArgument));
             register(registry, "test_class", TestClassNameArgument.class, SingletonArgumentInfo.contextFree(TestClassNameArgument::testClassName));

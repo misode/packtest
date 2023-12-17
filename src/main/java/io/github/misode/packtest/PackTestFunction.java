@@ -5,11 +5,11 @@ import net.minecraft.commands.*;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.commands.functions.InstantiatedFunction;
+import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -17,12 +17,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PackTestFunction {
-    private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("#\\s*@(\\w+)\\s+(\\S+)");
+    private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("#\\s*@(\\w+)(?:\\s+(\\S+))?");
     private static final String DEFAULT_BATCH = "packtestBatch";
     private static final String DEFAULT_TEMPLATE = "packtest:empty";
     private final ResourceLocation id;
@@ -47,7 +49,7 @@ public class PackTestFunction {
             if (matcher.find()) {
                 String key = matcher.group(1);
                 String value = matcher.group(2);
-                directives.put(key, value);
+                directives.put(key, value != null ? value : "true");
             }
         }
 
@@ -73,11 +75,36 @@ public class PackTestFunction {
         return this.directives.getOrDefault("template", DEFAULT_TEMPLATE);
     }
 
-    public TestFunction toTestFunction(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
-        Rotation rotation = StructureUtils.getRotationForRotationSteps(0);
+    private String getBatchName() {
+        return this.directives.getOrDefault("batch", DEFAULT_BATCH);
+    }
 
-        return new TestFunction(DEFAULT_BATCH, this.getTestName(), this.getTemplateName(), rotation, 100, 0L, true, 1, 1, (helper) -> {
-            if (function == null) {
+    private int getTimeout() {
+        return Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
+    }
+
+    private boolean isRequired() {
+        return Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
+    }
+
+    public TestFunction toTestFunction(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
+        PackTest.LOGGER.info("TIMEOUT {}", this.getTimeout());
+        return new TestFunction(
+                this.getBatchName(),
+                this.getTestName(),
+                this.getTemplateName(),
+                StructureUtils.getRotationForRotationSteps(0),
+                this.getTimeout(),
+                0L,
+                this.isRequired(),
+                1,
+                1,
+                createTestBody(permissionLevel, dispatcher));
+    }
+
+    private Consumer<GameTestHelper> createTestBody(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
+        return (helper) -> {
+            if (this.function == null) {
                 helper.fail(this.parseError != null ? this.parseError : "Failed to parse test function");
                 return;
             }
@@ -107,6 +134,6 @@ public class PackTestFunction {
             } else {
                 helper.succeed();
             }
-        });
+        };
     }
 }
