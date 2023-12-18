@@ -10,6 +10,10 @@ import org.spongepowered.asm.mixin.injection.At;
 import java.util.ArrayList;
 import java.util.Collection;
 
+/**
+ * Don't fail when initial batches is empty.
+ * Get list of batches after data packs have been loaded.
+ */
 @Mixin(GameTestServer.class)
 public class GameTestServerMixin {
 

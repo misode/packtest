@@ -1,5 +1,6 @@
 package io.github.misode.packtest.commands;
 
+import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -51,33 +52,42 @@ public class AssertCommand {
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
-        dispatcher.register(literal("assert")
-                .requires(ctx -> ctx.hasPermission(2))
+        LiteralArgumentBuilder<CommandSourceStack> assertBuilder = literal("assert")
+                .requires(ctx -> ctx.hasPermission(2));
+        assertBuilder = addConditions(assertBuilder, buildContext, ctx -> new AssertCustomExecutor(true, ctx));
+        LiteralArgumentBuilder<CommandSourceStack> notBuilder = literal("not");
+        notBuilder = addConditions(notBuilder, buildContext, ctx -> new AssertCustomExecutor(false, ctx));
+        assertBuilder = assertBuilder.then(notBuilder);
+        dispatcher.register(assertBuilder);
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
+        return builder
                 .then(literal("block")
                         .then(argument("pos", BlockPosArgument.blockPos())
                                 .then(argument("block", BlockPredicateArgument.blockPredicate(buildContext))
-                                        .executes(new AssertCustomExecutor(ctx -> {
+                                        .executes(expect.apply(ctx -> {
                                             BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
                                             Predicate<BlockInWorld> predicate = BlockPredicateArgument.getBlockPredicate(ctx, "block");
                                             BlockInWorld found = new BlockInWorld(ctx.getSource().getLevel(), pos, true);
                                             if (predicate.test(found)) {
-                                                return ok();
+                                                return ok("block");
                                             }
-                                            return err("Expected block, found " + BuiltInRegistries.BLOCK.getKey(found.getState().getBlock()));
+                                            return err("block", BuiltInRegistries.BLOCK.getKey(found.getState().getBlock()).toString());
                                         })))))
                 .then(literal("entity")
                         .then(argument("entities", EntityArgument.entities())
-                                .executes(new AssertCustomExecutor(ctx -> {
+                                .executes(expect.apply(ctx -> {
                                     Collection<? extends Entity> entities = EntityArgument.getOptionalEntities(ctx, "entities");
                                     if (!entities.isEmpty()) {
-                                        return ok();
+                                        return ok("entity");
                                     }
-                                    return err("Expected entity");
+                                    return err("entity");
                                 }))))
                 .then(literal("predicate")
                         .then(argument("predicate", ResourceLocationArgument.id())
                                 .suggests(SUGGEST_PREDICATE)
-                                .executes(new AssertCustomExecutor(ctx -> {
+                                .executes(expect.apply(ctx -> {
                                     ResourceLocation id = ctx.getArgument("predicate", ResourceLocation.class);
                                     LootItemCondition predicate = ResourceLocationArgument.getPredicate(ctx, "predicate");
                                     CommandSourceStack sourceStack = ctx.getSource();
@@ -87,36 +97,36 @@ public class AssertCommand {
                                             .create(LootContextParamSets.COMMAND);
                                     LootContext lootContext = new LootContext.Builder(lootParams).create(Optional.empty());
                                     lootContext.pushVisitedElement(LootContext.createVisitedEntry(predicate));
+                                    String expected = "predicate " + id + " to pass";
                                     if (predicate.test(lootContext)) {
-                                        return ok();
+                                        return ok(expected);
                                     }
-                                    return err("Predicate " + id + " failed");
+                                    return err(expected);
                                 }))))
                 .then(literal("score")
                         .then(argument("target", ScoreHolderArgument.scoreHolder())
                                 .suggests(ScoreHolderArgument.SUGGEST_SCORE_HOLDERS)
                                 .then(argument("targetObjective", ObjectiveArgument.objective())
-                                        .then(addScoreCheck("=", Integer::equals))
-                                        .then(addScoreCheck("<", (a, b) -> a < b))
-                                        .then(addScoreCheck("<=", (a, b) -> a <= b))
-                                        .then(addScoreCheck(">", (a, b) -> a > b))
-                                        .then(addScoreCheck("<=", (a, b) -> a <= b))
+                                        .then(addScoreCheck("=", Integer::equals, expect))
+                                        .then(addScoreCheck("<", (a, b) -> a < b, expect))
+                                        .then(addScoreCheck("<=", (a, b) -> a <= b, expect))
+                                        .then(addScoreCheck(">", (a, b) -> a > b, expect))
+                                        .then(addScoreCheck("<=", (a, b) -> a <= b, expect))
                                         .then(literal("matches")
                                                 .then(argument("range", RangeArgument.intRange())
-                                                        .executes(new AssertCustomExecutor(ctx -> checkScore(ctx, RangeArgument.Ints.getRange(ctx, "range"))))))
-                                )))
-        );
+                                                        .executes(expect.apply(ctx -> checkScore(ctx, RangeArgument.Ints.getRange(ctx, "range"))))))
+                                )));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> addScoreCheck(String op, BiPredicate<Integer, Integer> predicate) {
+    private static LiteralArgumentBuilder<CommandSourceStack> addScoreCheck(String op, BiPredicate<Integer, Integer> predicate, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
         return literal(op)
                 .then(argument("source", ScoreHolderArgument.scoreHolder())
                         .suggests(ScoreHolderArgument.SUGGEST_SCORE_HOLDERS)
                         .then(argument("sourceObjective", ObjectiveArgument.objective())
-                                .executes(new AssertCustomExecutor(ctx -> checkScore(ctx, op, predicate)))));
+                                .executes(expect.apply(ctx -> checkScore(ctx, op, predicate)))));
     }
 
-    private static Optional<String> checkScore(CommandContext<CommandSourceStack> ctx, String op, BiPredicate<Integer, Integer> predicate) throws  CommandSyntaxException {
+    private static AssertResult checkScore(CommandContext<CommandSourceStack> ctx, String op, BiPredicate<Integer, Integer> predicate) throws  CommandSyntaxException {
         ScoreHolder targetHolder = ScoreHolderArgument.getName(ctx, "target");
         Objective targetObj = ObjectiveArgument.getObjective(ctx, "targetObjective");
         ScoreHolder sourceHolder = ScoreHolderArgument.getName(ctx, "source");
@@ -127,30 +137,27 @@ public class AssertCommand {
         String targetName = targetHolder.getFeedbackDisplayName().getString();
         String sourceName = sourceHolder.getFeedbackDisplayName().getString();
         if (targetVal == null) {
-            return err("Expected " + targetName + " to have a score on " + targetObj.getName());
+            return err(targetName + " to have a score on " + targetObj.getName());
         }
         if (sourceVal == null) {
-            return err("Expected " + sourceName + " to have a score on " + sourceObj.getName());
+            return err(sourceName + " to have a score on " + sourceObj.getName());
         }
-        if (predicate.test(targetVal.value(), sourceVal.value())) {
-            return ok();
-        }
-        return err("Expected " + targetName + " " + targetObj.getName() + " " + op + " " + sourceName + " " + sourceObj.getName() + ", but got " + targetVal.value() + " " + op + " " + sourceVal.value());
+        String expected = targetName + " " + targetObj.getName() + " " + op + " " + sourceName + " " + sourceObj.getName();
+        String got = targetVal.value() + " " + op + " " + sourceVal.value();
+        return result(predicate.test(targetVal.value(), sourceVal.value()), expected, got);
     }
 
-    private static Optional<String> checkScore(CommandContext<CommandSourceStack> ctx, MinMaxBounds.Ints range) throws  CommandSyntaxException {
+    private static AssertResult checkScore(CommandContext<CommandSourceStack> ctx, MinMaxBounds.Ints range) throws  CommandSyntaxException {
         ScoreHolder holder = ScoreHolderArgument.getName(ctx, "target");
         Objective obj = ObjectiveArgument.getObjective(ctx, "targetObjective");
         Scoreboard scoreboard = ctx.getSource().getServer().getScoreboard();
         ReadOnlyScoreInfo val = scoreboard.getPlayerScoreInfo(holder, obj);
         String name = holder.getFeedbackDisplayName().getString();
         if (val == null) {
-            return err("Expected " + name + " to have a score on " + obj.getName());
+            return err(name + " to have a score on " + obj.getName());
         }
-        if (range.matches(val.value())) {
-            return ok();
-        }
-        return err("Expected " + name + " " + obj.getName() + " to match " + formatRange(range) + ", got " + val.value());
+        String expected = name + " " + obj.getName() + " to match " + formatRange(range);
+        return result(range.matches(val.value()), expected, Integer.toString(val.value()));
     }
 
     private static String formatRange(MinMaxBounds<?> range) {
@@ -165,15 +172,17 @@ public class AssertCommand {
     }
 
     static class AssertCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {
+        private final boolean expectOk;
         private final AssertPredicate predicate;
 
-        public AssertCustomExecutor(AssertPredicate predicate) {
+        public AssertCustomExecutor(boolean expect, AssertPredicate predicate) {
+            this.expectOk = expect;
             this.predicate = predicate;
         }
 
         public void run(CommandSourceStack sourceStack, ContextChain<CommandSourceStack> chain, ChainModifiers modifiers, ExecutionControl<CommandSourceStack> execution) {
             CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
-            this.predicate.apply(ctx).ifPresent(message -> {
+            this.predicate.apply(ctx).get(this.expectOk).ifPresent(message -> {
                 PackTestLibrary.INSTANCE.getHelperAt(sourceStack)
                         .ifPresent(helper -> helper.fail(message));
                 sourceStack.callback().onFailure();
@@ -185,24 +194,58 @@ public class AssertCommand {
     }
 
     @FunctionalInterface
-    interface AssertPredicate extends Function<CommandContext<CommandSourceStack>, Optional<String>> {
+    interface AssertPredicate extends Function<CommandContext<CommandSourceStack>, AssertResult> {
         @Override
-        default Optional<String> apply(final CommandContext<CommandSourceStack> sourceStack) {
+        default AssertResult apply(final CommandContext<CommandSourceStack> sourceStack) {
             try {
                 return applyThrows(sourceStack);
             } catch (final CommandSyntaxException e) {
-                return err(e.getMessage());
+                return (expectOk) -> Optional.of(e.getMessage());
             }
         }
 
-        Optional<String> applyThrows(CommandContext<CommandSourceStack> elem) throws CommandSyntaxException;
+        AssertResult applyThrows(CommandContext<CommandSourceStack> elem) throws CommandSyntaxException;
+    }
+
+    private static AssertResult err(String expected) {
+        return new ExpectedGot(false, expected, null);
     }
     
-    private static Optional<String> err(String message) {
-        return Optional.of(message);
+    private static AssertResult err(String expected, String got) {
+        return new ExpectedGot(false, expected, got);
     }
     
-    private static Optional<String> ok() {
-        return Optional.empty();
+    private static AssertResult ok(String match) {
+        return new ExpectedGot(true, match, null);
+    }
+
+    private static AssertResult ok(String match, String got) {
+        return new ExpectedGot(true, match, got);
+    }
+
+    private static AssertResult result(boolean ok, String expected, String got) {
+        return new ExpectedGot(ok, expected, got);
+    }
+
+    interface AssertResult {
+        Optional<String> get(boolean expectOk);
+    }
+
+    record ExpectedGot(boolean ok, String expected, String got) implements AssertResult {
+        public Optional<String> get(boolean expectOk) {
+            if (expectOk && !ok) {
+                if (got == null) {
+                    return Optional.of("Expected " + expected);
+                }
+                return Optional.of("Expected " + expected + ", got " + got);
+            }
+            if (!expectOk && ok) {
+                if (got == null) {
+                    return Optional.of("Did not expect " + expected);
+                }
+                return Optional.of("Did not expect " + expected + ", but got " + got);
+            }
+            return Optional.empty();
+        }
     }
 }
