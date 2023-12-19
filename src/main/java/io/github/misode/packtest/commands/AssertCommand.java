@@ -8,6 +8,7 @@ import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.PackTestLibrary;
+import io.github.misode.packtest.PackTestArgumentSource;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -15,6 +16,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.*;
 import net.minecraft.commands.arguments.blocks.BlockPredicateArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.commands.execution.ChainModifiers;
 import net.minecraft.commands.execution.CustomCommandExecutor;
 import net.minecraft.commands.execution.ExecutionControl;
@@ -37,18 +39,18 @@ import net.minecraft.world.scores.ScoreHolder;
 import net.minecraft.world.scores.Scoreboard;
 
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class AssertCommand {
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_PREDICATE = (ctx, suggestions) -> {
-        LootDataManager lvt2 = ctx.getSource().getServer().getLootData();
-        return SharedSuggestionProvider.suggestResource(lvt2.getKeys(LootDataType.PREDICATE), suggestions);
+        LootDataManager lootData = ctx.getSource().getServer().getLootData();
+        return SharedSuggestionProvider.suggestResource(lootData.getKeys(LootDataType.PREDICATE), suggestions);
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
@@ -68,21 +70,27 @@ public class AssertCommand {
                                 .then(argument("block", BlockPredicateArgument.blockPredicate(buildContext))
                                         .executes(expect.apply(ctx -> {
                                             BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
-                                            Predicate<BlockInWorld> predicate = BlockPredicateArgument.getBlockPredicate(ctx, "block");
+                                            var blockPredicate = ctx.getArgument("block", BlockPredicateArgument.Result.class);
+                                            String source = ((PackTestArgumentSource)blockPredicate).packtest$getSource();
                                             BlockInWorld found = new BlockInWorld(ctx.getSource().getLevel(), pos, true);
-                                            if (predicate.test(found)) {
-                                                return ok("block");
+                                            String foundId = BuiltInRegistries.BLOCK.getKey(found.getState().getBlock()).toString();
+                                            if (blockPredicate.test(found)) {
+                                                return ok(source, foundId);
                                             }
-                                            return err("block", BuiltInRegistries.BLOCK.getKey(found.getState().getBlock()).toString());
+                                            return err(source, foundId);
                                         })))))
                 .then(literal("entity")
                         .then(argument("entities", EntityArgument.entities())
                                 .executes(expect.apply(ctx -> {
-                                    Collection<? extends Entity> entities = EntityArgument.getOptionalEntities(ctx, "entities");
+                                    EntitySelector selector = ctx.getArgument("entities", EntitySelector.class);
+                                    String source = ((PackTestArgumentSource)selector).packtest$getSource();
+                                    Collection<? extends Entity> entities = selector.findEntities(ctx.getSource());
                                     if (!entities.isEmpty()) {
-                                        return ok("entity");
+                                        Entity firstEntity = entities.stream().findFirst().orElseThrow();
+                                        String firstName = Objects.requireNonNull(firstEntity.getDisplayName()).getString();
+                                        return ok(source, firstName + (entities.size() <= 1 ? "" : " and " + (entities.size() - 1) + " more"));
                                     }
-                                    return err("entity");
+                                    return err(source);
                                 }))))
                 .then(literal("predicate")
                         .then(argument("predicate", ResourceLocationArgument.id())

@@ -4,7 +4,12 @@
 	"compatibilityLevel": "JAVA_17",
 	"mixins": [
 		"ArgumentTypeInfosMixin",
+		"BlockPredicateArgumentBlockMixin",
+		"BlockPredicateArgumentMixin",
+		"BlockPredicateArgumentTagMixin",
 		"CommandsMixin",
+		"EntityArgumentMixin",
+		"EntitySelectorMixin",
 		"GameTestInfoMixin",
 		"GameTestRegistryMixin",
 		"GameTestServerMixin",
