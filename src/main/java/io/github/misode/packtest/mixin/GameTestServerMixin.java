@@ -22,7 +22,7 @@ public class GameTestServerMixin {
         return original && !PackTest.isAutoEnabled();
     }
 
-    @ModifyExpressionValue(method = "<init>", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Lists;newArrayList(Ljava/lang/Iterable;)Ljava/util/ArrayList;"))
+    @ModifyExpressionValue(method = "<init>", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Lists;newArrayList(Ljava/lang/Iterable;)Ljava/util/ArrayList;", remap = false))
     private ArrayList<GameTestBatch> modifyBatches(ArrayList<GameTestBatch> batches) {
         Collection<TestFunction> testFunctions = GameTestRegistry.getAllTestFunctions();
         return Lists.newArrayList(GameTestRunner.groupTestsIntoBatches(testFunctions));
