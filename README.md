@@ -20,7 +20,7 @@ fail "Oh no"
 ```
 
 ## Running tests
-Tests can be ran in-game using the `test` command.
+Tests can be run in-game using the `test` command.
 * `test runall`: runs all the tests
 * `test runall <namespace>`: runs all tests from a specified namespace
 * `test run <test>`: runs the test with a specified name
@@ -34,18 +34,22 @@ Tests can also be run automatically, for instance in a CI environment. When `-Dp
 ## Commands
 
 ### `fail`
-* `fail <text component>`: fails the current current test and returns from the function
+* `fail <text component>`: fails the current test and returns from the function
 
 ### `succeed`
-* `succeed`: succeeds the current test and returns from the function
+* `succeed`: always succeeds the current test and returns from the function
+* `succeed when <condition>`: succeeds when the condition is successful, tries every tick until the test times out
+* `succeed when not <condition>`: succeeds when the condition is unsuccessful, tries every tick until the test times out
 
 ### `assert`
-Checks a condition, if unsuccessful fails the current test and returns from the function
-* `assert block <pos> <block>`: checks if the block at the specified position matches the block predicate
-* `assert entity <selector>`: checks if the selector matches any entity (can also find entities outside the structure bounds)
-* `assert predicate <predicate>`: checks a predicate in a data pack
-* `assert score ...`: checks a score, same syntax as `execute if score`
-* `assert not ...`: checks the inverse of the condition, has all the same conditions as `assert`
+* `assert <condition>`: if condition is unsuccessful, fails the current test and returns from the function
+* `assert not <condition>`: if condition is successful, fails the current test and returns from the function
+
+## Conditions
+* `block <pos> <block>`: checks if the block at the specified position matches the block predicate
+* `entity <selector>`: checks if the selector matches any entity (can also find entities outside the structure bounds)
+* `predicate <predicate>`: checks a predicate in a data pack
+* `score ...`: checks scores using the same syntax as `execute if score`
 
 ## Directives
 Tests can be customized by placing certain directives as special comments at the start of the test function.
