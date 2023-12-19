@@ -11,10 +11,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Registers the {@link GameTestHelper} for each test so custom commands can access it
+ * Registers the {@link GameTestHelper} for each test so custom commands can access it.
+ * Prevents crash when test has already started.
  */
 @Mixin(GameTestInfo.class)
-public class GameTestInfoMixin {
+public abstract class GameTestInfoMixin {
     @Shadow
     public String getTestName() {
         throw new AssertionError("Nope.");
@@ -29,5 +30,10 @@ public class GameTestInfoMixin {
     @Inject(method = "finish", at = @At("HEAD"))
     private void finish(CallbackInfo ci) {
         PackTestLibrary.INSTANCE.unregisterTestHelper(this.getTestName());
+    }
+
+    @Inject(method = "startTest", cancellable = true, at = @At(value = "INVOKE", target = "Ljava/lang/IllegalStateException;<init>(Ljava/lang/String;)V"))
+    private void startTest(CallbackInfo ci) {
+        ci.cancel();
     }
 }

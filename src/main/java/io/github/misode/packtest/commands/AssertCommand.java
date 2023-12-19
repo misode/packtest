@@ -56,14 +56,14 @@ public class AssertCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         LiteralArgumentBuilder<CommandSourceStack> assertBuilder = literal("assert")
                 .requires(ctx -> ctx.hasPermission(2));
-        assertBuilder = addConditions(assertBuilder, buildContext, ctx -> new AssertCustomExecutor(true, ctx));
+        assertBuilder = addConditions(assertBuilder, buildContext, predicate -> new AssertCustomExecutor(true, predicate));
         LiteralArgumentBuilder<CommandSourceStack> notBuilder = literal("not");
-        notBuilder = addConditions(notBuilder, buildContext, ctx -> new AssertCustomExecutor(false, ctx));
+        notBuilder = addConditions(notBuilder, buildContext, predicate -> new AssertCustomExecutor(false, predicate));
         assertBuilder = assertBuilder.then(notBuilder);
         dispatcher.register(assertBuilder);
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
+    public static LiteralArgumentBuilder<CommandSourceStack> addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
         return builder
                 .then(literal("block")
                         .then(argument("pos", BlockPosArgument.blockPos())
@@ -183,8 +183,8 @@ public class AssertCommand {
         private final boolean expectOk;
         private final AssertPredicate predicate;
 
-        public AssertCustomExecutor(boolean expect, AssertPredicate predicate) {
-            this.expectOk = expect;
+        public AssertCustomExecutor(boolean expectOk, AssertPredicate predicate) {
+            this.expectOk = expectOk;
             this.predicate = predicate;
         }
 
@@ -202,7 +202,7 @@ public class AssertCommand {
     }
 
     @FunctionalInterface
-    interface AssertPredicate extends Function<CommandContext<CommandSourceStack>, AssertResult> {
+    public interface AssertPredicate extends Function<CommandContext<CommandSourceStack>, AssertResult> {
         @Override
         default AssertResult apply(final CommandContext<CommandSourceStack> sourceStack) {
             try {
@@ -235,7 +235,7 @@ public class AssertCommand {
         return new ExpectedGot(ok, expected, got);
     }
 
-    interface AssertResult {
+    public interface AssertResult {
         Optional<String> get(boolean expectOk);
     }
 

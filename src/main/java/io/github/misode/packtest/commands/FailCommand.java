@@ -22,8 +22,7 @@ public class FailCommand {
         dispatcher.register(literal("fail")
                 .requires(ctx -> ctx.hasPermission(2))
                 .then(argument("message", ComponentArgument.textComponent())
-                        .executes(new FailCommand.FailCustomExecutor())
-                )
+                        .executes(new FailCommand.FailCustomExecutor()))
         );
     }
 

@@ -26,7 +26,7 @@ public class PackTest implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
 			AssertCommand.register(dispatcher, buildContext);
 			FailCommand.register(dispatcher);
-			SucceedCommand.register(dispatcher);
+			SucceedCommand.register(dispatcher, buildContext);
 		});
 	}
 

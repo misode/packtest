@@ -130,7 +130,7 @@ public class PackTestFunction {
 
             if (hasFailed.get()) {
                 helper.fail("Test failed without a message");
-            } else {
+            } else if (!((PackTestHelper)helper).packtest$isFinalCheckAdded()) {
                 helper.succeed();
             }
         };
