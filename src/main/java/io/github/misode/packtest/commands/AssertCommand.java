@@ -7,8 +7,8 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import io.github.misode.packtest.PackTestLibrary;
 import io.github.misode.packtest.PackTestArgumentSource;
+import io.github.misode.packtest.PackTestLibrary;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -23,7 +23,9 @@ import net.minecraft.commands.execution.ExecutionControl;
 import net.minecraft.commands.execution.Frame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.commands.data.DataCommands;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -56,61 +58,27 @@ public class AssertCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         LiteralArgumentBuilder<CommandSourceStack> assertBuilder = literal("assert")
                 .requires(ctx -> ctx.hasPermission(2));
-        assertBuilder = addConditions(assertBuilder, buildContext, predicate -> new AssertCustomExecutor(true, predicate));
+        addConditions(assertBuilder, buildContext, predicate -> new AssertCustomExecutor(true, predicate));
         LiteralArgumentBuilder<CommandSourceStack> notBuilder = literal("not");
-        notBuilder = addConditions(notBuilder, buildContext, predicate -> new AssertCustomExecutor(false, predicate));
+        addConditions(notBuilder, buildContext, predicate -> new AssertCustomExecutor(false, predicate));
         assertBuilder = assertBuilder.then(notBuilder);
         dispatcher.register(assertBuilder);
     }
 
     public static LiteralArgumentBuilder<CommandSourceStack> addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
-        return builder
+        builder
                 .then(literal("block")
                         .then(argument("pos", BlockPosArgument.blockPos())
                                 .then(argument("block", BlockPredicateArgument.blockPredicate(buildContext))
-                                        .executes(expect.apply(ctx -> {
-                                            BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
-                                            var blockPredicate = ctx.getArgument("block", BlockPredicateArgument.Result.class);
-                                            String source = ((PackTestArgumentSource)blockPredicate).packtest$getSource();
-                                            BlockInWorld found = new BlockInWorld(ctx.getSource().getLevel(), pos, true);
-                                            String foundId = BuiltInRegistries.BLOCK.getKey(found.getState().getBlock()).toString();
-                                            if (blockPredicate.test(found)) {
-                                                return ok(source, foundId);
-                                            }
-                                            return err(source, foundId);
-                                        })))))
+                                        .executes(expect.apply(AssertCommand::assertBlock)))))
+                .then(literal("data"))
                 .then(literal("entity")
                         .then(argument("entities", EntityArgument.entities())
-                                .executes(expect.apply(ctx -> {
-                                    EntitySelector selector = ctx.getArgument("entities", EntitySelector.class);
-                                    String source = ((PackTestArgumentSource)selector).packtest$getSource();
-                                    Collection<? extends Entity> entities = selector.findEntities(ctx.getSource());
-                                    if (!entities.isEmpty()) {
-                                        Entity firstEntity = entities.stream().findFirst().orElseThrow();
-                                        String firstName = Objects.requireNonNull(firstEntity.getDisplayName()).getString();
-                                        return ok(source, firstName + (entities.size() <= 1 ? "" : " and " + (entities.size() - 1) + " more"));
-                                    }
-                                    return err(source);
-                                }))))
+                                .executes(expect.apply(AssertCommand::assertEntity))))
                 .then(literal("predicate")
                         .then(argument("predicate", ResourceLocationArgument.id())
                                 .suggests(SUGGEST_PREDICATE)
-                                .executes(expect.apply(ctx -> {
-                                    ResourceLocation id = ctx.getArgument("predicate", ResourceLocation.class);
-                                    LootItemCondition predicate = ResourceLocationArgument.getPredicate(ctx, "predicate");
-                                    CommandSourceStack sourceStack = ctx.getSource();
-                                    LootParams lootParams = new LootParams.Builder(sourceStack.getLevel())
-                                            .withParameter(LootContextParams.ORIGIN, sourceStack.getPosition())
-                                            .withOptionalParameter(LootContextParams.THIS_ENTITY, sourceStack.getEntity())
-                                            .create(LootContextParamSets.COMMAND);
-                                    LootContext lootContext = new LootContext.Builder(lootParams).create(Optional.empty());
-                                    lootContext.pushVisitedElement(LootContext.createVisitedEntry(predicate));
-                                    String expected = "predicate " + id + " to pass";
-                                    if (predicate.test(lootContext)) {
-                                        return ok(expected);
-                                    }
-                                    return err(expected);
-                                }))))
+                                .executes(expect.apply(AssertCommand::assertPredicate))))
                 .then(literal("score")
                         .then(argument("target", ScoreHolderArgument.scoreHolder())
                                 .suggests(ScoreHolderArgument.SUGGEST_SCORE_HOLDERS)
@@ -122,8 +90,57 @@ public class AssertCommand {
                                         .then(addScoreCheck("<=", (a, b) -> a <= b, expect))
                                         .then(literal("matches")
                                                 .then(argument("range", RangeArgument.intRange())
-                                                        .executes(expect.apply(ctx -> checkScore(ctx, RangeArgument.Ints.getRange(ctx, "range"))))))
+                                                        .executes(expect.apply(AssertCommand::assertScoreRange))))
                                 )));
+
+        for(DataCommands.DataProvider dataProvider : DataCommands.SOURCE_PROVIDERS) {
+            builder.then(dataProvider.wrap(literal("data"),
+                    dataBuilder -> dataBuilder.then(argument("path", NbtPathArgument.nbtPath())
+                            .executes(expect.apply(ctx -> assertData(ctx, dataProvider))))));
+        }
+
+        return builder;
+    }
+
+    private static AssertResult assertBlock(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
+        var blockPredicate = ctx.getArgument("block", BlockPredicateArgument.Result.class);
+        String source = ((PackTestArgumentSource)blockPredicate).packtest$getSource();
+        BlockInWorld found = new BlockInWorld(ctx.getSource().getLevel(), pos, true);
+        String foundId = BuiltInRegistries.BLOCK.getKey(found.getState().getBlock()).toString();
+        if (blockPredicate.test(found)) {
+            return ok(source, foundId);
+        }
+        return err(source, foundId);
+    }
+
+    private static AssertResult assertEntity(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EntitySelector selector = ctx.getArgument("entities", EntitySelector.class);
+        String source = ((PackTestArgumentSource)selector).packtest$getSource();
+        Collection<? extends Entity> entities = selector.findEntities(ctx.getSource());
+        if (!entities.isEmpty()) {
+            Entity firstEntity = entities.stream().findFirst().orElseThrow();
+            String firstName = Objects.requireNonNull(firstEntity.getDisplayName()).getString();
+            return ok(source, firstName + (entities.size() <= 1 ? "" : " and " + (entities.size() - 1) + " more"));
+        }
+        return err(source);
+    }
+
+    private static AssertResult assertPredicate(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ResourceLocation id = ctx.getArgument("predicate", ResourceLocation.class);
+        LootItemCondition predicate = ResourceLocationArgument.getPredicate(ctx, "predicate");
+        CommandSourceStack sourceStack = ctx.getSource();
+        LootParams lootParams = new LootParams.Builder(sourceStack.getLevel())
+                .withParameter(LootContextParams.ORIGIN, sourceStack.getPosition())
+                .withOptionalParameter(LootContextParams.THIS_ENTITY, sourceStack.getEntity())
+                .create(LootContextParamSets.COMMAND);
+        LootContext lootContext = new LootContext.Builder(lootParams).create(Optional.empty());
+        lootContext.pushVisitedElement(LootContext.createVisitedEntry(predicate));
+        String expected = "predicate " + id + " to pass";
+        if (predicate.test(lootContext)) {
+            return ok(expected);
+        }
+        return err(expected);
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> addScoreCheck(String op, BiPredicate<Integer, Integer> predicate, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
@@ -131,10 +148,10 @@ public class AssertCommand {
                 .then(argument("source", ScoreHolderArgument.scoreHolder())
                         .suggests(ScoreHolderArgument.SUGGEST_SCORE_HOLDERS)
                         .then(argument("sourceObjective", ObjectiveArgument.objective())
-                                .executes(expect.apply(ctx -> checkScore(ctx, op, predicate)))));
+                                .executes(expect.apply(ctx -> assertScores(ctx, op, predicate)))));
     }
 
-    private static AssertResult checkScore(CommandContext<CommandSourceStack> ctx, String op, BiPredicate<Integer, Integer> predicate) throws  CommandSyntaxException {
+    private static AssertResult assertScores(CommandContext<CommandSourceStack> ctx, String op, BiPredicate<Integer, Integer> predicate) throws  CommandSyntaxException {
         ScoreHolder targetHolder = ScoreHolderArgument.getName(ctx, "target");
         Objective targetObj = ObjectiveArgument.getObjective(ctx, "targetObjective");
         ScoreHolder sourceHolder = ScoreHolderArgument.getName(ctx, "source");
@@ -155,7 +172,8 @@ public class AssertCommand {
         return result(predicate.test(targetVal.value(), sourceVal.value()), expected, got);
     }
 
-    private static AssertResult checkScore(CommandContext<CommandSourceStack> ctx, MinMaxBounds.Ints range) throws  CommandSyntaxException {
+    private static AssertResult assertScoreRange(CommandContext<CommandSourceStack> ctx) throws  CommandSyntaxException {
+        MinMaxBounds.Ints range = RangeArgument.Ints.getRange(ctx, "range");
         ScoreHolder holder = ScoreHolderArgument.getName(ctx, "target");
         Objective obj = ObjectiveArgument.getObjective(ctx, "targetObjective");
         Scoreboard scoreboard = ctx.getSource().getServer().getScoreboard();
@@ -179,6 +197,12 @@ public class AssertCommand {
         return builder.toString();
     }
 
+    private static AssertResult assertData(CommandContext<CommandSourceStack> ctx, DataCommands.DataProvider dataProvider) throws CommandSyntaxException {
+        NbtPathArgument.NbtPath path = NbtPathArgument.getPath(ctx, "path");
+        Tag data = dataProvider.access(ctx).getData();
+        return result(path.countMatching(data) > 0, path.asString() + " to match", data.getAsString());
+    }
+
     static class AssertCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {
         private final boolean expectOk;
         private final AssertPredicate predicate;
@@ -190,14 +214,15 @@ public class AssertCommand {
 
         public void run(CommandSourceStack sourceStack, ContextChain<CommandSourceStack> chain, ChainModifiers modifiers, ExecutionControl<CommandSourceStack> execution) {
             CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
-            this.predicate.apply(ctx).get(this.expectOk).ifPresent(message -> {
+            var result = this.predicate.apply(ctx);
+            result.get(this.expectOk).ifPresentOrElse(message -> {
                 PackTestLibrary.INSTANCE.getHelperAt(sourceStack)
                         .ifPresent(helper -> helper.fail(message));
                 sourceStack.callback().onFailure();
                 Frame frame = execution.currentFrame();
                 frame.returnFailure();
                 frame.discard();
-            });
+            }, () -> sourceStack.callback().onSuccess(1));
         }
     }
 
