@@ -14,7 +14,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Remove coordinates from failing test logs when auto is enabled
+ * Remove coordinates from failing test logs when auto is enabled.
+ * Apply ascii color codes to failure messages.
  */
 @Mixin(LogTestReporter.class)
 public class LogTestReporterMixin {
@@ -27,10 +28,11 @@ public class LogTestReporterMixin {
     @Inject(method = "onTestFailed", at = @At(value = "HEAD"), cancellable = true)
     private void onTestFailed(GameTestInfo info, CallbackInfo ci) {
         if (PackTest.isAutoEnabled()) {
+            boolean color = PackTest.isAutoColoringEnabled();
             if (info.isRequired()) {
-                LOGGER.error("{} failed! {}", info.getTestName(), Util.describeError(info.getError()));
+                LOGGER.error((color ? "\u001b[0;31m" : "") + "{} failed! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), Util.describeError(info.getError()));
             } else {
-                LOGGER.warn("(optional) {} failed! {}", info.getTestName(), Util.describeError(info.getError()));
+                LOGGER.warn((color ? "\u001b[0;33m" : "") + "(optional) {} failed! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), Util.describeError(info.getError()));
             }
             ci.cancel();
         }

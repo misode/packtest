@@ -21,6 +21,10 @@ public class PackTest implements ModInitializer {
 		return System.getProperty("packtest.auto") != null;
 	}
 
+	public static boolean isAutoColoringEnabled() {
+		return !"false".equals(System.getProperty("packtest.auto.coloring"));
+	}
+
 	@Override
 	public void onInitialize() {
 		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
