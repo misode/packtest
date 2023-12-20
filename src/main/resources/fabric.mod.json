@@ -19,6 +19,7 @@
 			"io.github.misode.packtest.PackTest"
 		]
 	},
+	"accessWidener" : "packtest.accesswidener",
 	"mixins": [
 		"packtest.mixins.json"
 	],

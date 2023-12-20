@@ -1,28 +1,29 @@
 {
-	"required": true,
-	"package": "io.github.misode.packtest.mixin",
-	"compatibilityLevel": "JAVA_17",
-	"mixins": [
-		"ArgumentTypeInfosMixin",
-		"BlockPredicateArgumentBlockMixin",
-		"BlockPredicateArgumentMixin",
-		"BlockPredicateArgumentTagMixin",
-		"CommandsMixin",
-		"EntityArgumentMixin",
-		"EntitySelectorMixin",
-		"GameTestHelperMixin",
-		"GameTestInfoMixin",
-		"GameTestRegistryMixin",
-		"GameTestServerMixin",
-		"LogTestReporterMixin",
-		"MinecraftServerMixin",
-		"ReloadableServerResourcesMixin",
-		"TestCommandMixin"
-	],
-	"server": [
-		"server.MainMixin"
-	],
-	"injectors": {
-		"defaultRequire": 1
+  "required": true,
+  "package": "io.github.misode.packtest.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "mixins": [
+    "ArgumentTypeInfosMixin",
+    "BlockPredicateArgumentBlockMixin",
+    "BlockPredicateArgumentMixin",
+    "BlockPredicateArgumentTagMixin",
+    "CommandsMixin",
+    "EntityArgumentMixin",
+    "EntitySelectorMixin",
+    "GameTestHelperMixin",
+    "GameTestInfoMixin",
+    "GameTestRegistryMixin",
+    "GameTestServerMixin",
+    "LogTestReporterMixin",
+    "MinecraftServerMixin",
+    "PlayerListMixin",
+    "ReloadableServerResourcesMixin",
+    "TestCommandMixin"
+  ],
+  "server": [
+    "server.MainMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
 	}
 }
