@@ -104,7 +104,7 @@ public class PlayerCommand {
 
     private static int respawn(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         FakePlayer player = getPlayer(ctx);
-        player.respawn(ctx.getSource().getPosition());
+        player.respawn();
         return 1;
     }
 }

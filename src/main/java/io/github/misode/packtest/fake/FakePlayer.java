@@ -1,6 +1,7 @@
 package io.github.misode.packtest.fake;
 
 import com.mojang.authlib.GameProfile;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
@@ -19,6 +20,7 @@ import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -26,6 +28,7 @@ import java.util.Objects;
  * Heavily inspired by <a href="https://github.com/gnembon/fabric-carpet/blob/master/src/main/java/carpet/patches/EntityPlayerMPFake.java">Carpet</a>
  */
 public class FakePlayer extends ServerPlayer {
+    public @Nullable BlockPos origin = null;
     public Runnable fixStartingPosition = () -> {};
 
     public static void create(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
@@ -43,6 +46,7 @@ public class FakePlayer extends ServerPlayer {
             profile = new GameProfile(UUIDUtil.createOfflinePlayerUUID(username), username);
         }
         FakePlayer instance = new FakePlayer(server, level, profile, ClientInformation.createDefault());
+        instance.origin = BlockPos.containing(pos);
         instance.fixStartingPosition = () -> instance.moveTo(pos.x, pos.y, pos.z, 0, 0);
         server.getPlayerList().placeNewPlayer(
                 new FakeClientConnection(PacketFlow.SERVERBOUND),
@@ -66,9 +70,8 @@ public class FakePlayer extends ServerPlayer {
         this.connection.onDisconnect(reason);
     }
 
-    public void respawn(Vec3 pos) {
-        ServerPlayer newPlayer = server.getPlayerList().respawn(this, false);
-        newPlayer.moveTo(pos.x, pos.y, pos.z, 0, 0);
+    public void respawn() {
+        server.getPlayerList().respawn(this, false);
     }
 
     @Override

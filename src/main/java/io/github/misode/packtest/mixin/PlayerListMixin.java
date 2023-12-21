@@ -5,20 +5,24 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
 import io.github.misode.packtest.fake.FakePlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.Optional;
+
 /**
  * Fixes starting position of fake players when they load in.
- * Respawns fake players.
+ * Respawns fake players and in the correct position.
  */
 @Mixin(PlayerList.class)
 public class PlayerListMixin {
@@ -35,6 +39,24 @@ public class PlayerListMixin {
             return new FakePlayer(server, level, profile, cli);
         } else {
             return original.call(server, level, profile, cli);
+        }
+    }
+
+    @WrapOperation(method = "respawn", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerPlayer;getRespawnPosition()Lnet/minecraft/core/BlockPos;"))
+    private BlockPos getRespawnBlock(ServerPlayer player, Operation<BlockPos> original) {
+        if (player instanceof FakePlayer fakePlayer && fakePlayer.origin != null) {
+            return fakePlayer.origin;
+        } else {
+            return original.call(player);
+        }
+    }
+
+    @WrapOperation(method = "respawn", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Player;findRespawnPositionAndUseSpawnBlock(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;FZZ)Ljava/util/Optional;"))
+    private Optional<Vec3> getRespawnPos(ServerLevel level, BlockPos pos, float angle, boolean forced, boolean other, Operation<Optional<Vec3>> original, @Local(ordinal = 0) ServerPlayer player) {
+        if (player instanceof FakePlayer fakePlayer && fakePlayer.origin != null) {
+            return Optional.of(new Vec3(fakePlayer.origin.getX() + 0.5, fakePlayer.origin.getY(), fakePlayer.origin.getZ() + 0.5));
+        } else {
+            return original.call(level, pos, angle, forced, other);
         }
     }
 }
