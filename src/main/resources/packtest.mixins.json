@@ -13,6 +13,7 @@
     "GameTestHelperMixin",
     "GameTestInfoMixin",
     "GameTestRegistryMixin",
+    "GameTestRunnerMixin",
     "GameTestServerMixin",
     "LogTestReporterMixin",
     "MinecraftServerMixin",

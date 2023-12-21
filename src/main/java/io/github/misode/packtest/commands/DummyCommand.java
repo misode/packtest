@@ -7,7 +7,7 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
-import io.github.misode.packtest.fake.FakePlayer;
+import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -22,40 +22,40 @@ import java.util.Optional;
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
-public class PlayerCommand {
+public class DummyCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(literal("player")
+        dispatcher.register(literal("dummy")
                 .then(literal("spawn")
-                        .executes(PlayerCommand::spawnRandomName)
-                        .then(argument("player", StringArgumentType.word())
-                                .executes(PlayerCommand::spawnFixedName)))
+                        .executes(DummyCommand::spawnRandomName)
+                        .then(argument("name", StringArgumentType.word())
+                                .executes(DummyCommand::spawnFixedName)))
                 .then(literal("leave")
-                        .then(playerArgument()
-                                .executes(PlayerCommand::leave)))
+                        .then(dummyName()
+                                .executes(DummyCommand::leave)))
                 .then(literal("respawn")
-                        .then(playerArgument()
-                                .executes(PlayerCommand::respawn)))
+                        .then(dummyName()
+                                .executes(DummyCommand::respawn)))
                 .then(literal("jump")
-                        .then(playerArgument()
-                                .executes(PlayerCommand::jump)))
+                        .then(dummyName()
+                                .executes(DummyCommand::jump)))
                 .then(literal("sneak")
-                        .then(playerArgument()
+                        .then(dummyName()
                                 .then(argument("active", BoolArgumentType.bool())
-                                    .executes(PlayerCommand::sneak))))
+                                    .executes(DummyCommand::sneak))))
                 .then(literal("sprint")
-                    .then(playerArgument()
+                    .then(dummyName()
                             .then(argument("active", BoolArgumentType.bool())
-                                    .executes(PlayerCommand::sprint))))
+                                    .executes(DummyCommand::sprint))))
         );
     }
 
-    private static RequiredArgumentBuilder<CommandSourceStack, String> playerArgument() {
-        return argument("player", StringArgumentType.word())
+    private static RequiredArgumentBuilder<CommandSourceStack, String> dummyName() {
+        return argument("name", StringArgumentType.word())
                 .suggests((ctx, builder) -> {
                     PlayerList playerList = ctx.getSource().getServer().getPlayerList();
                     playerList.getPlayers().forEach(player -> {
-                        if (player instanceof FakePlayer) {
+                        if (player instanceof Dummy) {
                             builder.suggest(player.getName().getString());
                         }
                     });
@@ -63,16 +63,16 @@ public class PlayerCommand {
                 });
     }
 
-    private static FakePlayer getPlayer(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        String playerName = StringArgumentType.getString(ctx, "player");
-        return getPlayer(playerName, ctx).orElseThrow(() -> new SimpleCommandExceptionType(() -> "Fake player " + playerName + " does not exist").create());
+    private static Dummy getDummy(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        String playerName = StringArgumentType.getString(ctx, "name");
+        return getDummy(playerName, ctx).orElseThrow(() -> new SimpleCommandExceptionType(() -> "Dummy " + playerName + " does not exist").create());
     }
 
-    private static Optional<FakePlayer> getPlayer(String playerName, CommandContext<CommandSourceStack> ctx) {
+    private static Optional<Dummy> getDummy(String playerName, CommandContext<CommandSourceStack> ctx) {
         MinecraftServer server = ctx.getSource().getServer();
         ServerPlayer player = server.getPlayerList().getPlayerByName(playerName);
-        if (player instanceof FakePlayer fakePlayer) {
-            return Optional.of(fakePlayer);
+        if (player instanceof Dummy testPlayer) {
+            return Optional.of(testPlayer);
         }
         return Optional.empty();
     }
@@ -81,73 +81,73 @@ public class PlayerCommand {
         int tries = 0;
         while (tries++ < 10) {
             RandomSource random = ctx.getSource().getLevel().getRandom();
-            String playerName = "Tester" + random.nextInt(100, 1000);
-            if (getPlayer(playerName, ctx).isEmpty()) {
+            String playerName = "Dummy" + random.nextInt(100, 1000);
+            if (getDummy(playerName, ctx).isEmpty()) {
                 return spawn(playerName, ctx);
             }
         }
-        ctx.getSource().sendFailure(Component.literal("Failed to spawn player with a random name"));
+        ctx.getSource().sendFailure(Component.literal("Failed to spawn dummy with a random name"));
         return 0;
     }
 
     private static  int spawnFixedName(CommandContext<CommandSourceStack> ctx) {
-        String playerName = StringArgumentType.getString(ctx, "player");
+        String playerName = StringArgumentType.getString(ctx, "name");
         return spawn(playerName, ctx);
     }
 
-    private static int spawn(String playerName, CommandContext<CommandSourceStack> ctx) {
+    private static int spawn(String name, CommandContext<CommandSourceStack> ctx) {
         CommandSourceStack source = ctx.getSource();
         MinecraftServer server = source.getServer();
-        if (getPlayer(playerName, ctx).isPresent()) {
-            source.sendFailure(Component.literal("Player " + playerName + " is already logged on"));
+        if (getDummy(name, ctx).isPresent()) {
+            source.sendFailure(Component.literal("Dummy " + name + " is already logged on"));
             return 0;
         }
         ResourceKey<Level> dimension = source.getLevel().dimension();
-        FakePlayer.create(playerName, server, dimension, source.getPosition());
+        Dummy.create(name, server, dimension, source.getPosition());
         return 1;
     }
 
     private static int leave(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        FakePlayer player = getPlayer(ctx);
-        player.leave(Component.literal("Forced to leave"));
+        Dummy dummy = getDummy(ctx);
+        dummy.leave(Component.literal("Forced to leave"));
         return 1;
     }
 
     private static int respawn(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        FakePlayer player = getPlayer(ctx);
-        player.respawn();
+        Dummy dummy = getDummy(ctx);
+        dummy.respawn();
         return 1;
     }
 
     private static int jump(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        FakePlayer player = getPlayer(ctx);
-        if (player.onGround()) {
-            player.jumpFromGround();
+        Dummy dummy = getDummy(ctx);
+        if (dummy.onGround()) {
+            dummy.jumpFromGround();
             return 1;
         }
-        ctx.getSource().sendFailure(Component.literal("Player is not on the ground"));
+        ctx.getSource().sendFailure(Component.literal("Dummy is not on the ground"));
         return 0;
     }
 
     private static int sneak(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        FakePlayer player = getPlayer(ctx);
+        Dummy dummy = getDummy(ctx);
         boolean toggle = BoolArgumentType.getBool(ctx, "active");
-        if (player.isShiftKeyDown() != toggle) {
-            player.setShiftKeyDown(toggle);
+        if (dummy.isShiftKeyDown() != toggle) {
+            dummy.setShiftKeyDown(toggle);
             return 1;
         }
-        ctx.getSource().sendFailure(Component.literal(toggle ? "Player is already sneaking" : "Player is already not sneaking"));
+        ctx.getSource().sendFailure(Component.literal(toggle ? "Dummy is already sneaking" : "Dummy is already not sneaking"));
         return 0;
     }
 
     private static int sprint(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        FakePlayer player = getPlayer(ctx);
+        Dummy dummy = getDummy(ctx);
         boolean toggle = BoolArgumentType.getBool(ctx, "active");
-        if (player.isSprinting() != toggle) {
-            player.setSprinting(toggle);
+        if (dummy.isSprinting() != toggle) {
+            dummy.setSprinting(toggle);
             return 1;
         }
-        ctx.getSource().sendFailure(Component.literal(toggle ? "Player is already sprinting" : "Player is already not sprinting"));
+        ctx.getSource().sendFailure(Component.literal(toggle ? "Dummy is already sprinting" : "Dummy is already not sprinting"));
         return 0;
     }
 }

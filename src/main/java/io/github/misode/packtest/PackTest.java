@@ -3,7 +3,7 @@ package io.github.misode.packtest;
 import io.github.misode.packtest.commands.AssertCommand;
 import io.github.misode.packtest.commands.FailCommand;
 import io.github.misode.packtest.commands.SucceedCommand;
-import io.github.misode.packtest.commands.PlayerCommand;
+import io.github.misode.packtest.commands.DummyCommand;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.core.BlockPos;
@@ -31,7 +31,7 @@ public class PackTest implements ModInitializer {
 		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
 			AssertCommand.register(dispatcher, buildContext);
 			FailCommand.register(dispatcher);
-			PlayerCommand.register(dispatcher);
+			DummyCommand.register(dispatcher);
 			SucceedCommand.register(dispatcher, buildContext);
 		});
 	}

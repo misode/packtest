@@ -1,12 +1,12 @@
-package io.github.misode.packtest.fake;
+package io.github.misode.packtest.dummy;
 
 import net.minecraft.network.Connection;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.protocol.PacketFlow;
 
-public class FakeClientConnection extends Connection {
+public class DummyClientConnection extends Connection {
 
-    public FakeClientConnection(PacketFlow flow) {
+    public DummyClientConnection(PacketFlow flow) {
         super(flow);
     }
 

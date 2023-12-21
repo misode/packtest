@@ -1,4 +1,4 @@
-package io.github.misode.packtest.fake;
+package io.github.misode.packtest.dummy;
 
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
@@ -27,7 +27,7 @@ import java.util.Objects;
 /**
  * Heavily inspired by <a href="https://github.com/gnembon/fabric-carpet/blob/master/src/main/java/carpet/patches/EntityPlayerMPFake.java">Carpet</a>
  */
-public class FakePlayer extends ServerPlayer {
+public class Dummy extends ServerPlayer {
     public @Nullable BlockPos origin = null;
     public Runnable fixStartingPosition = () -> {};
 
@@ -45,23 +45,23 @@ public class FakePlayer extends ServerPlayer {
         if (profile == null) {
             profile = new GameProfile(UUIDUtil.createOfflinePlayerUUID(username), username);
         }
-        FakePlayer instance = new FakePlayer(server, level, profile, ClientInformation.createDefault());
-        instance.origin = BlockPos.containing(pos);
-        instance.fixStartingPosition = () -> instance.moveTo(pos.x, pos.y, pos.z, 0, 0);
+        Dummy dummy = new Dummy(server, level, profile, ClientInformation.createDefault());
+        dummy.origin = BlockPos.containing(pos);
+        dummy.fixStartingPosition = () -> dummy.moveTo(pos.x, pos.y, pos.z, 0, 0);
         server.getPlayerList().placeNewPlayer(
-                new FakeClientConnection(PacketFlow.SERVERBOUND),
-                instance,
-                new CommonListenerCookie(profile, 0, instance.clientInformation()));
-        instance.teleportTo(level, pos.x, pos.y, pos.z, 0, 0);
-        instance.setHealth(20);
-        instance.unsetRemoved();
-        instance.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
-        server.getPlayerList().broadcastAll(new ClientboundRotateHeadPacket(instance, (byte) (instance.yHeadRot * 256 / 360)), dimensionId);
-        server.getPlayerList().broadcastAll(new ClientboundTeleportEntityPacket(instance), dimensionId);
-        instance.entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7f);
+                new DummyClientConnection(PacketFlow.SERVERBOUND),
+                dummy,
+                new CommonListenerCookie(profile, 0, dummy.clientInformation()));
+        dummy.teleportTo(level, pos.x, pos.y, pos.z, 0, 0);
+        dummy.setHealth(20);
+        dummy.unsetRemoved();
+        dummy.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+        server.getPlayerList().broadcastAll(new ClientboundRotateHeadPacket(dummy, (byte) (dummy.yHeadRot * 256 / 360)), dimensionId);
+        server.getPlayerList().broadcastAll(new ClientboundTeleportEntityPacket(dummy), dimensionId);
+        dummy.entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7f);
     }
 
-    public FakePlayer(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli) {
+    public Dummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli) {
         super(server, level, profile, cli);
     }
 
