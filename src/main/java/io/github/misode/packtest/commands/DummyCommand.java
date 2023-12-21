@@ -2,6 +2,7 @@ package io.github.misode.packtest.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -15,6 +16,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 
 import java.util.Optional;
@@ -44,9 +48,21 @@ public class DummyCommand {
                                 .then(argument("active", BoolArgumentType.bool())
                                     .executes(DummyCommand::sneak))))
                 .then(literal("sprint")
-                    .then(dummyName()
-                            .then(argument("active", BoolArgumentType.bool())
-                                    .executes(DummyCommand::sprint))))
+                        .then(dummyName()
+                                .then(argument("active", BoolArgumentType.bool())
+                                        .executes(DummyCommand::sprint))))
+                .then(literal("drop")
+                        .then(dummyName()
+                                .executes(ctx -> dropMainhand(ctx, false))
+                                .then(literal("all")
+                                        .executes(ctx -> dropMainhand(ctx, true)))))
+                .then(literal("swap")
+                        .then(dummyName()
+                                .executes(DummyCommand::swap)))
+                .then(literal("selectslot")
+                        .then(dummyName()
+                                .then(argument("slot", IntegerArgumentType.integer(1, 9))
+                                    .executes(DummyCommand::selectSlot))))
         );
     }
 
@@ -148,6 +164,35 @@ public class DummyCommand {
             return 1;
         }
         ctx.getSource().sendFailure(Component.literal(toggle ? "Dummy is already sprinting" : "Dummy is already not sprinting"));
+        return 0;
+    }
+
+    private static int dropMainhand(CommandContext<CommandSourceStack> ctx, boolean stack) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        if (!dummy.getInventory().getSelected().is(Items.AIR)) {
+            dummy.drop(stack);
+            return 1;
+        }
+        ctx.getSource().sendFailure(Component.literal("Dummy is not holding an item in their mainhand"));
+        return 0;
+    }
+
+    private static int swap(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        ItemStack offhandItem = dummy.getItemInHand(InteractionHand.OFF_HAND);
+        dummy.setItemInHand(InteractionHand.OFF_HAND, dummy.getItemInHand(InteractionHand.MAIN_HAND));
+        dummy.setItemInHand(InteractionHand.MAIN_HAND, offhandItem);
+        return 1;
+    }
+
+    private static int selectSlot(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        int slot = IntegerArgumentType.getInteger(ctx, "slot");
+        if (dummy.getInventory().selected != slot - 1) {
+            dummy.getInventory().selected = slot - 1;
+            return 1;
+        }
+        ctx.getSource().sendFailure(Component.literal("Dummy already has slot " + slot + " selected"));
         return 0;
     }
 }
