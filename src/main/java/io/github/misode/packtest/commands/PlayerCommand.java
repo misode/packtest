@@ -1,12 +1,12 @@
 package io.github.misode.packtest.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
-import com.mojang.brigadier.suggestion.Suggestions;
-import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import io.github.misode.packtest.fake.FakePlayer;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
@@ -18,7 +18,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.Level;
 
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
@@ -32,24 +31,36 @@ public class PlayerCommand {
                         .then(argument("player", StringArgumentType.word())
                                 .executes(PlayerCommand::spawnFixedName)))
                 .then(literal("leave")
-                        .then(argument("player", StringArgumentType.word())
-                                .suggests(PlayerCommand::listFakePlayers)
+                        .then(playerArgument()
                                 .executes(PlayerCommand::leave)))
                 .then(literal("respawn")
-                        .then(argument("player", StringArgumentType.word())
-                                .suggests(PlayerCommand::listFakePlayers)
+                        .then(playerArgument()
                                 .executes(PlayerCommand::respawn)))
+                .then(literal("jump")
+                        .then(playerArgument()
+                                .executes(PlayerCommand::jump)))
+                .then(literal("sneak")
+                        .then(playerArgument()
+                                .then(argument("active", BoolArgumentType.bool())
+                                    .executes(PlayerCommand::sneak))))
+                .then(literal("sprint")
+                    .then(playerArgument()
+                            .then(argument("active", BoolArgumentType.bool())
+                                    .executes(PlayerCommand::sprint))))
         );
     }
 
-    private static CompletableFuture<Suggestions> listFakePlayers(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        PlayerList playerList = ctx.getSource().getServer().getPlayerList();
-        playerList.getPlayers().forEach(player -> {
-            if (player instanceof FakePlayer) {
-                builder.suggest(player.getName().getString());
-            }
-        });
-        return builder.buildFuture();
+    private static RequiredArgumentBuilder<CommandSourceStack, String> playerArgument() {
+        return argument("player", StringArgumentType.word())
+                .suggests((ctx, builder) -> {
+                    PlayerList playerList = ctx.getSource().getServer().getPlayerList();
+                    playerList.getPlayers().forEach(player -> {
+                        if (player instanceof FakePlayer) {
+                            builder.suggest(player.getName().getString());
+                        }
+                    });
+                    return builder.buildFuture();
+                });
     }
 
     private static FakePlayer getPlayer(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -106,5 +117,37 @@ public class PlayerCommand {
         FakePlayer player = getPlayer(ctx);
         player.respawn();
         return 1;
+    }
+
+    private static int jump(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        FakePlayer player = getPlayer(ctx);
+        if (player.onGround()) {
+            player.jumpFromGround();
+            return 1;
+        }
+        ctx.getSource().sendFailure(Component.literal("Player is not on the ground"));
+        return 0;
+    }
+
+    private static int sneak(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        FakePlayer player = getPlayer(ctx);
+        boolean toggle = BoolArgumentType.getBool(ctx, "active");
+        if (player.isShiftKeyDown() != toggle) {
+            player.setShiftKeyDown(toggle);
+            return 1;
+        }
+        ctx.getSource().sendFailure(Component.literal(toggle ? "Player is already sneaking" : "Player is already not sneaking"));
+        return 0;
+    }
+
+    private static int sprint(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        FakePlayer player = getPlayer(ctx);
+        boolean toggle = BoolArgumentType.getBool(ctx, "active");
+        if (player.isSprinting() != toggle) {
+            player.setSprinting(toggle);
+            return 1;
+        }
+        ctx.getSource().sendFailure(Component.literal(toggle ? "Player is already sprinting" : "Player is already not sprinting"));
+        return 0;
     }
 }
