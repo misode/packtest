@@ -10,6 +10,10 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -17,9 +21,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
 
@@ -63,6 +71,24 @@ public class DummyCommand {
                         .then(dummyName()
                                 .then(argument("slot", IntegerArgumentType.integer(1, 9))
                                     .executes(DummyCommand::selectSlot))))
+                .then(literal("use")
+                        .then(dummyName()
+                                .then(literal("item")
+                                        .executes(DummyCommand::useItem))
+                                .then(literal("block")
+                                        .then(argument("pos", Vec3Argument.vec3(false))
+                                                .executes(ctx -> useBlock(ctx, Direction.UP))
+                                                .then(argument("direction", DirectionArgument.direction())
+                                                        .executes(ctx -> useBlock(ctx, DirectionArgument.getDirection(ctx, "direction"))))))
+                                .then(literal("entity")
+                                        .then(argument("entity", EntityArgument.entity())
+                                                .executes(ctx -> useEntity(ctx, null))
+                                                .then(argument("pos", Vec3Argument.vec3(false))
+                                                        .executes(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos"))))))))
+                .then(literal("attack")
+                        .then(dummyName()
+                                .then(argument("entity", EntityArgument.entity())
+                                        .executes(DummyCommand::attackEntity))))
         );
     }
 
@@ -194,5 +220,59 @@ public class DummyCommand {
         }
         ctx.getSource().sendFailure(Component.literal("Dummy already has slot " + slot + " selected"));
         return 0;
+    }
+
+    private static int useItem(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        for (InteractionHand hand : InteractionHand.values()) {
+            ItemStack handItem = dummy.getItemInHand(hand);
+            if (dummy.gameMode.useItem(dummy, dummy.level(), handItem, hand).consumesAction()) {
+                return 1;
+            }
+        }
+        ctx.getSource().sendFailure(Component.literal("Dummy cannot use that item"));
+        return 0;
+    }
+
+    private static int useBlock(CommandContext<CommandSourceStack> ctx, Direction hitDirection) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        Vec3 pos = Vec3Argument.getVec3(ctx, "pos");
+        for (InteractionHand hand : InteractionHand.values()) {
+            ItemStack handItem = dummy.getItemInHand(hand);
+            BlockHitResult blockHit = new BlockHitResult(pos, hitDirection, BlockPos.containing(pos), false);
+            InteractionResult result = dummy.gameMode.useItemOn(dummy, dummy.serverLevel(), handItem, hand, blockHit);
+            if (result.consumesAction()) {
+                if (result.shouldSwing()) dummy.swing(hand);
+                return 1;
+            }
+        }
+        ctx.getSource().sendFailure(Component.literal("Dummy cannot interact with that block"));
+        return 0;
+    }
+
+    private static int useEntity(CommandContext<CommandSourceStack> ctx, Vec3 pos) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        Entity entity = EntityArgument.getEntity(ctx, "entity");
+        if (pos == null) {
+            pos = entity.position();
+        }
+        for (InteractionHand hand : InteractionHand.values()) {
+            if (entity.interactAt(dummy, pos, hand).consumesAction()) {
+                return 1;
+            }
+            if (dummy.interactOn(entity, hand).consumesAction()) {
+                return 1;
+            }
+        }
+        ctx.getSource().sendFailure(Component.literal("Dummy cannot interact with that entity"));
+        return 0;
+    }
+
+    private static int attackEntity(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        Entity entity = EntityArgument.getEntity(ctx, "entity");
+        dummy.attack(entity);
+        dummy.swing(InteractionHand.MAIN_HAND);
+        return 1;
     }
 }
