@@ -4,7 +4,7 @@ PackTest allows you to write game tests in a data pack. Tests are `*.mcfunction`
 ## Example
 **`data/example/tests/foo.mcfunction`**
 ```mcfunction
-# Summons an armor stand and finds it
+#> Summons an armor stand and finds it
 # @template example:small_platform
 # @optional
 
