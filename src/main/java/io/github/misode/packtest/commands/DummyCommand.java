@@ -13,6 +13,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.core.BlockPos;
@@ -52,6 +53,7 @@ public class DummyCommand {
     private static final DynamicCommandExceptionType ERROR_USE_ITEM = createError("cannot use that item");
     private static final DynamicCommandExceptionType ERROR_INTERACT_BLOCK = createError("cannot interact with that block");
     private static final DynamicCommandExceptionType ERROR_INTERACT_ENTITY = createError("cannot interact with that entity");
+    private static final DynamicCommandExceptionType ERROR_MINE_BLOCK = createError("failed to mine block");
 
     private static DynamicCommandExceptionType createError(String message) {
         return new DynamicCommandExceptionType(name -> Component.literal("Dummy " + name + " " + message));
@@ -98,6 +100,9 @@ public class DummyCommand {
                 .then(literal("attack")
                         .then(argument("entity", EntityArgument.entity())
                                 .executes(DummyCommand::attackEntity)))
+                .then(literal("mine")
+                        .then(argument("pos", BlockPosArgument.blockPos())
+                                .executes(DummyCommand::mineBlock)))
         ));
     }
 
@@ -141,7 +146,7 @@ public class DummyCommand {
             throw ERROR_PLAYER_EXISTS.create(name);
         }
         ResourceKey<Level> dimension = source.getLevel().dimension();
-        Dummy.createRandom(name, server, dimension, source.getPosition());
+        Dummy.create(name, server, dimension, source.getPosition());
         return 1;
     }
 
@@ -262,6 +267,15 @@ public class DummyCommand {
         Entity entity = EntityArgument.getEntity(ctx, "entity");
         dummy.attack(entity);
         dummy.swing(InteractionHand.MAIN_HAND);
+        return 1;
+    }
+
+    private static int mineBlock(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        BlockPos pos = BlockPosArgument.getBlockPos(ctx, "pos");
+        if (!dummy.gameMode.destroyBlock(pos)) {
+            throw ERROR_MINE_BLOCK.create(dummy.getUsername());
+        }
         return 1;
     }
 }

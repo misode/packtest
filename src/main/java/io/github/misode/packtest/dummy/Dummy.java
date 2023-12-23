@@ -38,13 +38,13 @@ public class Dummy extends ServerPlayer {
         while (tries++ < 10) {
             String playerName = "Dummy" + random.nextInt(100, 1000);
             if (server.getPlayerList().getPlayerByName(playerName) == null) {
-                return createRandom(playerName, server, dimensionId, pos);
+                return create(playerName, server, dimensionId, pos);
             }
         }
         throw new IllegalStateException("Failed to spawn dummy with a random name");
     }
 
-    public static Dummy createRandom(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
+    public static Dummy create(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
         ServerLevel level = server.getLevel(dimensionId);
         GameProfileCache.setUsesAuthentication(false);
         GameProfile profile;
