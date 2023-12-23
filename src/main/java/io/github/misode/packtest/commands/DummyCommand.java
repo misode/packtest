@@ -38,9 +38,6 @@ public class DummyCommand {
     private static final SimpleCommandExceptionType ERROR_DUMMY_NOT_FOUND = new SimpleCommandExceptionType(
             Component.literal("No dummy was found")
     );
-    private static final SimpleCommandExceptionType ERROR_DUMMY_RANDOM = new SimpleCommandExceptionType(
-            Component.literal("Failed to spawn dummy with a random name")
-    );
     private static final DynamicCommandExceptionType ERROR_DUMMY_EXISTS = createError("is already logged on");
     private static final DynamicCommandExceptionType ERROR_PLAYER_EXISTS = createError("is already a player");
     private static final DynamicCommandExceptionType ERROR_NOT_ON_GROUND = createError("is not on the ground");
@@ -61,69 +58,57 @@ public class DummyCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(literal("dummy")
+        dispatcher.register(literal("dummy").then(dummyName()
                 .then(literal("spawn")
-                        .executes(DummyCommand::spawnRandomName)
-                        .then(argument("name", StringArgumentType.word())
-                                .executes(DummyCommand::spawnFixedName)))
+                        .executes(DummyCommand::spawnFixedName))
                 .then(literal("leave")
-                        .then(dummyName()
-                                .executes(DummyCommand::leave)))
+                        .executes(DummyCommand::leave))
                 .then(literal("respawn")
-                        .then(dummyName()
-                                .executes(DummyCommand::respawn)))
+                        .executes(DummyCommand::respawn))
                 .then(literal("jump")
-                        .then(dummyName()
-                                .executes(DummyCommand::jump)))
+                        .executes(DummyCommand::jump))
                 .then(literal("sneak")
-                        .then(dummyName()
-                                .then(argument("active", BoolArgumentType.bool())
-                                    .executes(DummyCommand::sneak))))
+                        .then(argument("active", BoolArgumentType.bool())
+                            .executes(DummyCommand::sneak)))
                 .then(literal("sprint")
-                        .then(dummyName()
-                                .then(argument("active", BoolArgumentType.bool())
-                                        .executes(DummyCommand::sprint))))
+                        .then(argument("active", BoolArgumentType.bool())
+                                .executes(DummyCommand::sprint)))
                 .then(literal("drop")
-                        .then(dummyName()
-                                .executes(ctx -> dropMainhand(ctx, false))
-                                .then(literal("all")
-                                        .executes(ctx -> dropMainhand(ctx, true)))))
+                        .executes(ctx -> dropMainhand(ctx, false))
+                        .then(literal("all")
+                                .executes(ctx -> dropMainhand(ctx, true))))
                 .then(literal("swap")
-                        .then(dummyName()
-                                .executes(DummyCommand::swap)))
+                        .executes(DummyCommand::swap))
                 .then(literal("selectslot")
-                        .then(dummyName()
-                                .then(argument("slot", IntegerArgumentType.integer(1, 9))
-                                    .executes(DummyCommand::selectSlot))))
+                        .then(argument("slot", IntegerArgumentType.integer(1, 9))
+                            .executes(DummyCommand::selectSlot)))
                 .then(literal("use")
-                        .then(dummyName()
-                                .then(literal("item")
-                                        .executes(DummyCommand::useItem))
-                                .then(literal("block")
-                                        .then(argument("pos", Vec3Argument.vec3(false))
-                                                .executes(ctx -> useBlock(ctx, Direction.UP))
-                                                .then(argument("direction", DirectionArgument.direction())
-                                                        .executes(ctx -> useBlock(ctx, DirectionArgument.getDirection(ctx, "direction"))))))
-                                .then(literal("entity")
-                                        .then(argument("entity", EntityArgument.entity())
-                                                .executes(ctx -> useEntity(ctx, null))
-                                                .then(argument("pos", Vec3Argument.vec3(false))
-                                                        .executes(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos"))))))))
-                .then(literal("attack")
-                        .then(dummyName()
+                        .then(literal("item")
+                                .executes(DummyCommand::useItem))
+                        .then(literal("block")
+                                .then(argument("pos", Vec3Argument.vec3(false))
+                                        .executes(ctx -> useBlock(ctx, Direction.UP))
+                                        .then(argument("direction", DirectionArgument.direction())
+                                                .executes(ctx -> useBlock(ctx, DirectionArgument.getDirection(ctx, "direction"))))))
+                        .then(literal("entity")
                                 .then(argument("entity", EntityArgument.entity())
-                                        .executes(DummyCommand::attackEntity))))
-        );
+                                        .executes(ctx -> useEntity(ctx, null))
+                                        .then(argument("pos", Vec3Argument.vec3(false))
+                                                .executes(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos")))))))
+                .then(literal("attack")
+                        .then(argument("entity", EntityArgument.entity())
+                                .executes(DummyCommand::attackEntity)))
+        ));
     }
 
     private static RequiredArgumentBuilder<CommandSourceStack, EntitySelector> dummyName() {
-        return argument("name", EntityArgument.entity())
+        return argument("dummy", EntityArgument.entity())
                 .suggests((ctx, builder) -> {
                     builder.suggest("@s");
                     PlayerList playerList = ctx.getSource().getServer().getPlayerList();
                     playerList.getPlayers().forEach(player -> {
-                        if (player instanceof Dummy) {
-                            builder.suggest(player.getName().getString());
+                        if (player instanceof Dummy dummy) {
+                            builder.suggest(dummy.getUsername());
                         }
                     });
                     return builder.buildFuture();
@@ -131,7 +116,7 @@ public class DummyCommand {
     }
 
     private static Dummy getDummy(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        EntitySelector selector = ctx.getArgument("name", EntitySelector.class);
+        EntitySelector selector = ctx.getArgument("dummy", EntitySelector.class);
         ServerPlayer player;
         try {
             player = selector.findSinglePlayer(ctx.getSource());
@@ -142,18 +127,6 @@ public class DummyCommand {
             return dummy;
         }
         throw ERROR_DUMMY_NOT_FOUND.create();
-    }
-
-    private static int spawnRandomName(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        CommandSourceStack source = ctx.getSource();
-        MinecraftServer server = source.getServer();
-        ResourceKey<Level> dimension = source.getLevel().dimension();
-        try {
-            Dummy.createRandom(server, dimension, source.getPosition());
-        } catch (IllegalArgumentException e) {
-            throw ERROR_DUMMY_RANDOM.create();
-        }
-        return 1;
     }
 
     private static int spawnFixedName(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
