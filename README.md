@@ -45,6 +45,22 @@ Tests can also be run automatically, for instance in a CI environment. When `-Dp
 * `assert <condition>`: if condition is unsuccessful, fails the current test and returns from the function
 * `assert not <condition>`: if condition is successful, fails the current test and returns from the function
 
+### `dummy`
+* `dummy <name> spawn`: spawns a new dummy
+* `dummy <name> respawn`: respawns the dummy after it has been killed
+* `dummy <name> leave`: makes the dummy leave the server
+* `dummy <name> jump`: makes the dummy jump, if currently on ground
+* `dummy <name> sneak [true|false]`: makes the dummy hold shift or un-shift (not the same as currently crouching)
+* `dummy <name> sprint [true|false]`: makes the dummy sprint or un-sprint
+* `dummy <name> drop [all]`: makes the dummy drop the current mainhand, either one item or the entire stack
+* `dummy <name> swap`: makes the dummy swap its mainhand and offhand
+* `dummy <name> selectslot`: makes the dummy select a different hotbar slot
+* `dummy <name> use item`: makes the dummy use its hand item, either mainhand or offhand
+* `dummy <name> use block <pos> [<direction>]`: makes the dummy use its hand item on a block position
+* `dummy <name> use entity <entity>`: makes the dummy use its hand item on an entity
+* `dummy <name> attack <entity>`: makes the dummy attack an entity with its mainhand
+* `dummy <name> mine <pos>`: makes the dummy mine a block
+
 ## Conditions
 * `block <pos> <block>`: checks if the block at the specified position matches the block predicate
 * `entity <selector>`: checks if the selector matches any entity (can also find entities outside the structure bounds)
@@ -58,3 +74,4 @@ Tests can be customized by placing certain directives as special comments at the
 * `@batch`: the batch name for this test, defaults to `packtestBatch`
 * `@timeout`: an integer specifying the timeout, defaults to `100`
 * `@optional`: whether this test is allowed to fail, defaults to `false`, if there is no value after the directive it is considered as `true`
+* `@dummy`: whether to spawn a dummy at the start of the test and set `@s` to this dummy, taking a position which defaults to `~0.5 ~ ~0.5`
