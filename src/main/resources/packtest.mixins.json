@@ -13,12 +13,12 @@
     "GameTestHelperMixin",
     "GameTestInfoMixin",
     "GameTestRegistryMixin",
-    "GameTestRunnerMixin",
     "GameTestServerMixin",
     "LogTestReporterMixin",
     "MinecraftServerMixin",
     "PlayerListMixin",
     "ReloadableServerResourcesMixin",
+    "StructureUtilsMixin",
     "TestCommandMixin"
   ],
   "server": [

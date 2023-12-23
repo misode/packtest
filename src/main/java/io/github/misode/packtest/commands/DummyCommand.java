@@ -7,11 +7,14 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
+import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -19,22 +22,43 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-
-import java.util.Optional;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class DummyCommand {
+
+    private static final SimpleCommandExceptionType ERROR_DUMMY_NOT_FOUND = new SimpleCommandExceptionType(
+            Component.literal("No dummy was found")
+    );
+    private static final SimpleCommandExceptionType ERROR_DUMMY_RANDOM = new SimpleCommandExceptionType(
+            Component.literal("Failed to spawn dummy with a random name")
+    );
+    private static final DynamicCommandExceptionType ERROR_DUMMY_EXISTS = createError("is already logged on");
+    private static final DynamicCommandExceptionType ERROR_PLAYER_EXISTS = createError("is already a player");
+    private static final DynamicCommandExceptionType ERROR_NOT_ON_GROUND = createError("is not on the ground");
+    private static final DynamicCommandExceptionType ERROR_SNEAKING = createError("is already sneaking");
+    private static final DynamicCommandExceptionType ERROR_NOT_SNEAKING = createError("is already not sneaking");
+    private static final DynamicCommandExceptionType ERROR_SPRINTING = createError("is already sprinting");
+    private static final DynamicCommandExceptionType ERROR_NOT_SPRINTING = createError("is already not sprinting");
+    private static final DynamicCommandExceptionType ERROR_NOT_HOLDING_ITEM = createError("is not holding an item in their mainhand");
+    private static final Dynamic2CommandExceptionType ERROR_SLOT_SELECTED = new Dynamic2CommandExceptionType(
+            (name, slot) -> Component.literal("Dummy " + name + " already has slot " + slot + " selected")
+    );
+    private static final DynamicCommandExceptionType ERROR_USE_ITEM = createError("cannot use that item");
+    private static final DynamicCommandExceptionType ERROR_INTERACT_BLOCK = createError("cannot interact with that block");
+    private static final DynamicCommandExceptionType ERROR_INTERACT_ENTITY = createError("cannot interact with that entity");
+
+    private static DynamicCommandExceptionType createError(String message) {
+        return new DynamicCommandExceptionType(name -> Component.literal("Dummy " + name + " " + message));
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("dummy")
@@ -92,9 +116,10 @@ public class DummyCommand {
         );
     }
 
-    private static RequiredArgumentBuilder<CommandSourceStack, String> dummyName() {
-        return argument("name", StringArgumentType.word())
+    private static RequiredArgumentBuilder<CommandSourceStack, EntitySelector> dummyName() {
+        return argument("name", EntityArgument.entity())
                 .suggests((ctx, builder) -> {
+                    builder.suggest("@s");
                     PlayerList playerList = ctx.getSource().getServer().getPlayerList();
                     playerList.getPlayers().forEach(player -> {
                         if (player instanceof Dummy) {
@@ -106,46 +131,44 @@ public class DummyCommand {
     }
 
     private static Dummy getDummy(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        String playerName = StringArgumentType.getString(ctx, "name");
-        return getDummy(playerName, ctx).orElseThrow(() -> new SimpleCommandExceptionType(() -> "Dummy " + playerName + " does not exist").create());
-    }
-
-    private static Optional<Dummy> getDummy(String playerName, CommandContext<CommandSourceStack> ctx) {
-        MinecraftServer server = ctx.getSource().getServer();
-        ServerPlayer player = server.getPlayerList().getPlayerByName(playerName);
-        if (player instanceof Dummy testPlayer) {
-            return Optional.of(testPlayer);
+        EntitySelector selector = ctx.getArgument("name", EntitySelector.class);
+        ServerPlayer player;
+        try {
+            player = selector.findSinglePlayer(ctx.getSource());
+        } catch (CommandSyntaxException e) {
+            throw ERROR_DUMMY_NOT_FOUND.create();
         }
-        return Optional.empty();
-    }
-
-    private static int spawnRandomName(CommandContext<CommandSourceStack> ctx) {
-        int tries = 0;
-        while (tries++ < 10) {
-            RandomSource random = ctx.getSource().getLevel().getRandom();
-            String playerName = "Dummy" + random.nextInt(100, 1000);
-            if (getDummy(playerName, ctx).isEmpty()) {
-                return spawn(playerName, ctx);
-            }
+        if (player instanceof Dummy dummy) {
+            return dummy;
         }
-        ctx.getSource().sendFailure(Component.literal("Failed to spawn dummy with a random name"));
-        return 0;
+        throw ERROR_DUMMY_NOT_FOUND.create();
     }
 
-    private static  int spawnFixedName(CommandContext<CommandSourceStack> ctx) {
-        String playerName = StringArgumentType.getString(ctx, "name");
-        return spawn(playerName, ctx);
-    }
-
-    private static int spawn(String name, CommandContext<CommandSourceStack> ctx) {
+    private static int spawnRandomName(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         MinecraftServer server = source.getServer();
-        if (getDummy(name, ctx).isPresent()) {
-            source.sendFailure(Component.literal("Dummy " + name + " is already logged on"));
-            return 0;
+        ResourceKey<Level> dimension = source.getLevel().dimension();
+        try {
+            Dummy.createRandom(server, dimension, source.getPosition());
+        } catch (IllegalArgumentException e) {
+            throw ERROR_DUMMY_RANDOM.create();
+        }
+        return 1;
+    }
+
+    private static int spawnFixedName(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        String name = StringArgumentType.getString(ctx, "name");
+        CommandSourceStack source = ctx.getSource();
+        MinecraftServer server = source.getServer();
+        ServerPlayer player = server.getPlayerList().getPlayerByName(name);
+        if (player instanceof Dummy) {
+            throw ERROR_DUMMY_EXISTS.create(name);
+        }
+        if (player != null) {
+            throw ERROR_PLAYER_EXISTS.create(name);
         }
         ResourceKey<Level> dimension = source.getLevel().dimension();
-        Dummy.create(name, server, dimension, source.getPosition());
+        Dummy.createRandom(name, server, dimension, source.getPosition());
         return 1;
     }
 
@@ -163,44 +186,40 @@ public class DummyCommand {
 
     private static int jump(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
-        if (dummy.onGround()) {
-            dummy.jumpFromGround();
-            return 1;
+        if (!dummy.onGround()) {
+            throw ERROR_NOT_ON_GROUND.create(dummy.getUsername());
         }
-        ctx.getSource().sendFailure(Component.literal("Dummy is not on the ground"));
-        return 0;
+        dummy.jumpFromGround();
+        return 1;
     }
 
     private static int sneak(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
-        boolean toggle = BoolArgumentType.getBool(ctx, "active");
-        if (dummy.isShiftKeyDown() != toggle) {
-            dummy.setShiftKeyDown(toggle);
-            return 1;
+        boolean active = BoolArgumentType.getBool(ctx, "active");
+        if (dummy.isShiftKeyDown() == active) {
+            throw (active ? ERROR_SNEAKING : ERROR_NOT_SNEAKING).create(dummy.getUsername());
         }
-        ctx.getSource().sendFailure(Component.literal(toggle ? "Dummy is already sneaking" : "Dummy is already not sneaking"));
-        return 0;
+        dummy.setShiftKeyDown(active);
+        return 1;
     }
 
     private static int sprint(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
-        boolean toggle = BoolArgumentType.getBool(ctx, "active");
-        if (dummy.isSprinting() != toggle) {
-            dummy.setSprinting(toggle);
-            return 1;
+        boolean active = BoolArgumentType.getBool(ctx, "active");
+        if (dummy.isSprinting() == active) {
+            throw (active ? ERROR_SPRINTING : ERROR_NOT_SPRINTING).create(dummy.getUsername());
         }
-        ctx.getSource().sendFailure(Component.literal(toggle ? "Dummy is already sprinting" : "Dummy is already not sprinting"));
-        return 0;
+        dummy.setSprinting(active);
+        return 1;
     }
 
     private static int dropMainhand(CommandContext<CommandSourceStack> ctx, boolean stack) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
-        if (!dummy.getInventory().getSelected().is(Items.AIR)) {
-            dummy.drop(stack);
-            return 1;
+        if (dummy.getInventory().getSelected().isEmpty()) {
+            throw ERROR_NOT_HOLDING_ITEM.create(dummy.getUsername());
         }
-        ctx.getSource().sendFailure(Component.literal("Dummy is not holding an item in their mainhand"));
-        return 0;
+        dummy.drop(stack);
+        return 1;
     }
 
     private static int swap(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -214,12 +233,11 @@ public class DummyCommand {
     private static int selectSlot(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
         int slot = IntegerArgumentType.getInteger(ctx, "slot");
-        if (dummy.getInventory().selected != slot - 1) {
-            dummy.getInventory().selected = slot - 1;
-            return 1;
+        if (dummy.getInventory().selected == slot - 1) {
+            throw ERROR_SLOT_SELECTED.create(dummy.getUsername(), slot);
         }
-        ctx.getSource().sendFailure(Component.literal("Dummy already has slot " + slot + " selected"));
-        return 0;
+        dummy.getInventory().selected = slot - 1;
+        return 1;
     }
 
     private static int useItem(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -230,8 +248,7 @@ public class DummyCommand {
                 return 1;
             }
         }
-        ctx.getSource().sendFailure(Component.literal("Dummy cannot use that item"));
-        return 0;
+        throw ERROR_USE_ITEM.create(dummy.getUsername());
     }
 
     private static int useBlock(CommandContext<CommandSourceStack> ctx, Direction hitDirection) throws CommandSyntaxException {
@@ -246,10 +263,10 @@ public class DummyCommand {
                 return 1;
             }
         }
-        ctx.getSource().sendFailure(Component.literal("Dummy cannot interact with that block"));
-        return 0;
+        throw ERROR_INTERACT_BLOCK.create(dummy.getUsername());
     }
 
+    @SuppressWarnings("SameReturnValue")
     private static int useEntity(CommandContext<CommandSourceStack> ctx, Vec3 pos) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
         Entity entity = EntityArgument.getEntity(ctx, "entity");
@@ -264,8 +281,7 @@ public class DummyCommand {
                 return 1;
             }
         }
-        ctx.getSource().sendFailure(Component.literal("Dummy cannot interact with that entity"));
-        return 0;
+        throw ERROR_INTERACT_ENTITY.create(dummy.getUsername());
     }
 
     private static int attackEntity(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {

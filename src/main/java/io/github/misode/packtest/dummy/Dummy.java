@@ -14,6 +14,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.players.GameProfileCache;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -31,7 +32,19 @@ public class Dummy extends ServerPlayer {
     public @Nullable BlockPos origin = null;
     public Runnable fixStartingPosition = () -> {};
 
-    public static void create(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
+    public static Dummy createRandom(MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
+        RandomSource random = server.overworld().getRandom();
+        int tries = 0;
+        while (tries++ < 10) {
+            String playerName = "Dummy" + random.nextInt(100, 1000);
+            if (server.getPlayerList().getPlayerByName(playerName) == null) {
+                return createRandom(playerName, server, dimensionId, pos);
+            }
+        }
+        throw new IllegalStateException("Failed to spawn dummy with a random name");
+    }
+
+    public static Dummy createRandom(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
         ServerLevel level = server.getLevel(dimensionId);
         GameProfileCache.setUsesAuthentication(false);
         GameProfile profile;
@@ -59,10 +72,15 @@ public class Dummy extends ServerPlayer {
         server.getPlayerList().broadcastAll(new ClientboundRotateHeadPacket(dummy, (byte) (dummy.yHeadRot * 256 / 360)), dimensionId);
         server.getPlayerList().broadcastAll(new ClientboundTeleportEntityPacket(dummy), dimensionId);
         dummy.entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7f);
+        return dummy;
     }
 
     public Dummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli) {
         super(server, level, profile, cli);
+    }
+
+    public String getUsername() {
+        return this.getGameProfile().getName();
     }
 
     public void leave(Component reason) {
