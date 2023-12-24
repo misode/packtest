@@ -7,21 +7,24 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
 import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
+import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -29,8 +32,7 @@ import java.util.Objects;
  * Heavily inspired by <a href="https://github.com/gnembon/fabric-carpet/blob/master/src/main/java/carpet/patches/EntityPlayerMPFake.java">Carpet</a>
  */
 public class Dummy extends ServerPlayer {
-    public @Nullable BlockPos origin = null;
-    public Runnable fixStartingPosition = () -> {};
+    public Vec3 originalSpawn;
 
     public static Dummy createRandom(MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
         RandomSource random = server.overworld().getRandom();
@@ -58,14 +60,13 @@ public class Dummy extends ServerPlayer {
         if (profile == null) {
             profile = new GameProfile(UUIDUtil.createOfflinePlayerUUID(username), username);
         }
-        Dummy dummy = new Dummy(server, level, profile, ClientInformation.createDefault());
-        dummy.origin = BlockPos.containing(pos);
-        dummy.fixStartingPosition = () -> dummy.moveTo(pos.x, pos.y, pos.z, 0, 0);
+        Vec3 originalSpawn = Vec3.atBottomCenterOf(BlockPos.containing(pos));
+        Dummy dummy = new Dummy(server, level, profile, ClientInformation.createDefault(), originalSpawn);
         server.getPlayerList().placeNewPlayer(
                 new DummyClientConnection(PacketFlow.SERVERBOUND),
                 dummy,
                 new CommonListenerCookie(profile, 0, dummy.clientInformation()));
-        dummy.teleportTo(level, pos.x, pos.y, pos.z, 0, 0);
+        dummy.teleportTo(level, originalSpawn.x, originalSpawn.y, originalSpawn.z, 0, 0);
         dummy.setHealth(20);
         dummy.unsetRemoved();
         dummy.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
@@ -75,8 +76,9 @@ public class Dummy extends ServerPlayer {
         return dummy;
     }
 
-    public Dummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli) {
+    public Dummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli, Vec3 originalSpawn) {
         super(server, level, profile, cli);
+        this.originalSpawn = originalSpawn;
     }
 
     public String getUsername() {
@@ -102,6 +104,16 @@ public class Dummy extends ServerPlayer {
             super.tick();
             this.doTick();
         } catch (NullPointerException ignored) {}
+    }
+
+    @Override
+    public void die(DamageSource cause) {
+        super.die(cause);
+        if (this.serverLevel().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN)) {
+            this.server.tell(new TickTask(this.server.getTickCount(),
+                    () -> this.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN))
+            ));
+        }
     }
 
     @Override
