@@ -3,13 +3,13 @@ package io.github.misode.packtest.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import io.github.misode.packtest.PackTestPlayerName;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -39,6 +39,9 @@ public class DummyCommand {
     private static final SimpleCommandExceptionType ERROR_DUMMY_NOT_FOUND = new SimpleCommandExceptionType(
             Component.literal("No dummy was found")
     );
+    private static final SimpleCommandExceptionType ERROR_NO_NAME = new SimpleCommandExceptionType(
+            Component.literal("Cannot spawn dummy without a name")
+    );
     private static final DynamicCommandExceptionType ERROR_DUMMY_EXISTS = createError("is already logged on");
     private static final DynamicCommandExceptionType ERROR_PLAYER_EXISTS = createError("is already a player");
     private static final DynamicCommandExceptionType ERROR_NOT_ON_GROUND = createError("is not on the ground");
@@ -62,7 +65,7 @@ public class DummyCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("dummy").then(dummyName()
                 .then(literal("spawn")
-                        .executes(DummyCommand::spawnFixedName))
+                        .executes(DummyCommand::spawn))
                 .then(literal("leave")
                         .executes(DummyCommand::leave))
                 .then(literal("respawn")
@@ -134,8 +137,12 @@ public class DummyCommand {
         throw ERROR_DUMMY_NOT_FOUND.create();
     }
 
-    private static int spawnFixedName(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        String name = StringArgumentType.getString(ctx, "name");
+    private static int spawn(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EntitySelector selector = ctx.getArgument("dummy", EntitySelector.class);
+        String name = ((PackTestPlayerName)selector).packtest$getPlayerName();
+        if (name == null) {
+            throw ERROR_NO_NAME.create();
+        }
         CommandSourceStack source = ctx.getSource();
         MinecraftServer server = source.getServer();
         ServerPlayer player = server.getPlayerList().getPlayerByName(name);
