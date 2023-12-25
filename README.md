@@ -28,8 +28,10 @@ Tests can be run in-game using the `test` command.
 * `test runthis`: runs the closes test
 * `test runthese`: runs all tests within 200 blocks
 
-## Auto test server
+### Auto test server
 Tests can also be run automatically, for instance in a CI environment. When `-Dpacktest.auto` is set, the game test server will start automatically with the loaded tests. The process will exit when all tests have finished with the exist code set to the number of failed tests. 
+
+To run tests automatically in GitHub Actions, you can use the [packtest_runner](https://github.com/CarbonSmasher/packtest_runner) action.
 
 ## Commands
 
@@ -63,6 +65,7 @@ Tests can also be run automatically, for instance in a CI environment. When `-Dp
 
 ## Conditions
 * `block <pos> <block>`: checks if the block at the specified position matches the block predicate
+* `data ...`: checks NBT data using the same syntax as `execute if score`
 * `entity <selector>`: checks if the selector matches any entity (can also find entities outside the structure bounds)
 * `predicate <predicate>`: checks a predicate in a data pack
 * `score ...`: checks scores using the same syntax as `execute if score`
@@ -71,7 +74,9 @@ Tests can also be run automatically, for instance in a CI environment. When `-Dp
 Tests can be customized by placing certain directives as special comments at the start of the test function.
 
 * `@template`: the resource location of a structure template to use for the test, defaults to an empty 1x1x1 structure
-* `@batch`: the batch name for this test, defaults to `packtestBatch`
 * `@timeout`: an integer specifying the timeout, defaults to `100`
 * `@optional`: whether this test is allowed to fail, defaults to `false`, if there is no value after the directive it is considered as `true`
 * `@dummy`: whether to spawn a dummy at the start of the test and set `@s` to this dummy, taking a position which defaults to `~0.5 ~ ~0.5`
+* `@batch`: the batch name for this test, defaults to `packtestBatch`
+* `@beforebatch`: a command to run before this batch, there can only be one per batch
+* `@afterbatch`: a command to run after this batch, there can only be one per batch
