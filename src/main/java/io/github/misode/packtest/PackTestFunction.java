@@ -9,12 +9,12 @@ import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.commands.functions.InstantiatedFunction;
-import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -107,6 +107,22 @@ public class PackTestFunction {
         return Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
     }
 
+    public void registerBatchHook(int permissionLevel, Map<String, Consumer<ServerLevel>> map, String type) {
+        String command = this.directives.get(type + "batch");
+        if (command == null) {
+            return;
+        }
+        String batchName = this.getBatchName();
+        Consumer<ServerLevel> oldBefore = map.putIfAbsent(batchName, (level) -> {
+            CommandSourceStack source = level.getServer().createCommandSourceStack()
+                    .withPermission(permissionLevel);
+            level.getServer().getCommands().performPrefixedCommand(source, command);
+        });
+        if (oldBefore != null) {
+            PackTest.LOGGER.error("Only one @" + type + "batch is allowed per batch. Batch '" + batchName + "' has more than one!");
+        }
+    }
+
     public TestFunction toTestFunction(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
         return new TestFunction(
                 this.getBatchName(),
@@ -148,7 +164,6 @@ public class PackTestFunction {
             Dummy dummy;
             if (dummyPos != null) {
                 try {
-                    PackTest.LOGGER.info("Directive position {} {}", dummyPos, helper.getLevel().getBlockState(BlockPos.containing(dummyPos.x, dummyPos.y, dummyPos.z)));
                     dummy = Dummy.createRandom(helper.getLevel().getServer(), helper.getLevel().dimension(), dummyPos);
                     dummy.setOnGround(true); // little hack because we know the dummy will be on the ground
                     sourceStack = sourceStack.withEntity(dummy);

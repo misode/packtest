@@ -17,6 +17,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.block.entity.StructureBlockEntity;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -24,6 +25,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 
 public class PackTestLibrary implements PreparableReloadListener {
     public static final PackTestLibrary INSTANCE = new PackTestLibrary(2, new CommandDispatcher<>());
@@ -33,6 +35,8 @@ public class PackTestLibrary implements PreparableReloadListener {
     private CommandDispatcher<CommandSourceStack> dispatcher;
     private Collection<TestFunction> tests = Lists.newArrayList();
     private Set<String> namespaces = Sets.newHashSet();
+    private Map<String, Consumer<ServerLevel>> beforeBatch = Maps.newHashMap();
+    private Map<String, Consumer<ServerLevel>> afterBatch = Maps.newHashMap();
     private final Map<String, GameTestHelper> testHelperMap = Maps.newHashMap();
 
     public PackTestLibrary(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -106,12 +110,16 @@ public class PackTestLibrary implements PreparableReloadListener {
         });
 
         return prep.thenCompose(barrier::wait).thenAcceptAsync(functions -> {
+            Map<String, Consumer<ServerLevel>> beforeBatch = Maps.newHashMap();
+            Map<String, Consumer<ServerLevel>> afterBatch = Maps.newHashMap();
             ImmutableList.Builder<TestFunction> testsBuilder = ImmutableList.builder();
             ImmutableSet.Builder<String> namespacesBuilder = ImmutableSet.builder();
             functions.forEach((id, future) -> future.handle((val, err) -> {
                 if (err != null) {
                     PackTest.LOGGER.error("Failed to load test {}", id, err);
                 } else {
+                    val.registerBatchHook(this.permissionLevel, beforeBatch, "before");
+                    val.registerBatchHook(this.permissionLevel, afterBatch, "after");
                     testsBuilder.add(val.toTestFunction(this.permissionLevel, this.dispatcher));
                     namespacesBuilder.add(id.getNamespace());
                 }
@@ -119,6 +127,8 @@ public class PackTestLibrary implements PreparableReloadListener {
             }).join());
             this.tests = testsBuilder.build();
             this.namespaces = namespacesBuilder.build();
+            this.beforeBatch = beforeBatch;
+            this.afterBatch = afterBatch;
             PackTest.LOGGER.info("Loaded {} tests", this.tests.size());
         });
     }
@@ -129,6 +139,14 @@ public class PackTestLibrary implements PreparableReloadListener {
 
     public Collection<String> getAllTestClassNames() {
         return namespaces;
+    }
+
+    public @Nullable Consumer<ServerLevel> getBeforeBatchFunction(String batchName) {
+        return this.beforeBatch.get(batchName);
+    }
+
+    public @Nullable Consumer<ServerLevel> getAfterBatchFunction(String batchName) {
+        return this.afterBatch.get(batchName);
     }
 
     private static List<String> readLines(Resource resource) {

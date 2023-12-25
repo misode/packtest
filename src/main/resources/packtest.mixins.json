@@ -10,6 +10,7 @@
     "CommandsMixin",
     "EntityArgumentMixin",
     "EntitySelectorMixin",
+    "GameTestBatchMixin",
     "GameTestHelperMixin",
     "GameTestInfoMixin",
     "GameTestRegistryMixin",
