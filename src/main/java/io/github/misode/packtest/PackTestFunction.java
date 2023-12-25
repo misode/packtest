@@ -1,10 +1,15 @@
 package io.github.misode.packtest;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.*;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.commands.functions.InstantiatedFunction;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.gametest.framework.TestFunction;
@@ -24,7 +29,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class PackTestFunction {
-    private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("#\\s*@(\\w+)(?:\\s+(\\S+))?");
+    private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("^#\\s*@(\\w+)(?:\\s+(.+))?$");
     private static final String DEFAULT_BATCH = "packtestBatch";
     private static final String DEFAULT_TEMPLATE = "packtest:empty";
     private final ResourceLocation id;
@@ -83,6 +88,21 @@ public class PackTestFunction {
         return Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
     }
 
+    private Optional<Vec3> getDummyPos(CommandSourceStack source) {
+        String dummyValue = this.directives.get("dummy");
+        if (dummyValue == null) {
+            return Optional.empty();
+        }
+        if (dummyValue.equals("true")) {
+            dummyValue = "~0.5 ~ ~0.5";
+        }
+        try {
+            return Optional.of(Vec3Argument.vec3().parse(new StringReader(dummyValue)).getPosition(source));
+        } catch (CommandSyntaxException e) {
+            return Optional.empty();
+        }
+    }
+
     private boolean isRequired() {
         return Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
     }
@@ -115,18 +135,34 @@ public class PackTestFunction {
                     .withSuppressedOutput()
                     .withCallback((success, result) -> hasFailed.set(!success));
 
+            InstantiatedFunction<CommandSourceStack> instantiatedFn;
             try {
-                InstantiatedFunction<CommandSourceStack> instantiatedFn = function.instantiate(null, dispatcher, sourceStack);
-                Commands.executeCommandInContext(sourceStack, execution -> ExecutionContext.queueInitialFunctionCall(
-                        execution,
-                        instantiatedFn,
-                        sourceStack,
-                        CommandResultCallback.EMPTY));
+                instantiatedFn = function.instantiate(null, dispatcher, sourceStack);
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
                 helper.fail("Failed to instantiate test function: " + message);
                 return;
             }
+
+            Vec3 dummyPos = this.getDummyPos(sourceStack).orElse(null);
+            Dummy dummy;
+            if (dummyPos != null) {
+                try {
+                    PackTest.LOGGER.info("Directive position {} {}", dummyPos, helper.getLevel().getBlockState(BlockPos.containing(dummyPos.x, dummyPos.y, dummyPos.z)));
+                    dummy = Dummy.createRandom(helper.getLevel().getServer(), helper.getLevel().dimension(), dummyPos);
+                    dummy.setOnGround(true); // little hack because we know the dummy will be on the ground
+                    sourceStack = sourceStack.withEntity(dummy);
+                } catch (IllegalArgumentException e) {
+                    helper.fail("Failed to initialize test with dummy");
+                }
+            }
+
+            CommandSourceStack finalSourceStack = sourceStack;
+            Commands.executeCommandInContext(sourceStack, execution -> ExecutionContext.queueInitialFunctionCall(
+                    execution,
+                    instantiatedFn,
+                    finalSourceStack,
+                    CommandResultCallback.EMPTY));
 
             if (hasFailed.get()) {
                 helper.fail("Test failed without a message");

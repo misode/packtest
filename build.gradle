@@ -19,6 +19,8 @@ repositories {
 }
 
 loom {
+	accessWidenerPath = file("src/main/resources/packtest.accesswidener")
+
     splitEnvironmentSourceSets()
 
 	mods {
