@@ -151,6 +151,8 @@ public class PackTestFunction {
                     .withSuppressedOutput()
                     .withCallback((success, result) -> hasFailed.set(!success));
 
+            ((PackTestSourceStack)sourceStack).packtest$setHelper(helper);
+
             InstantiatedFunction<CommandSourceStack> instantiatedFn;
             try {
                 instantiatedFn = function.instantiate(null, dispatcher, sourceStack);

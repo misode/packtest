@@ -8,7 +8,7 @@ import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.PackTestArgumentSource;
-import io.github.misode.packtest.PackTestLibrary;
+import io.github.misode.packtest.PackTestSourceStack;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -23,6 +23,7 @@ import net.minecraft.commands.execution.ExecutionControl;
 import net.minecraft.commands.execution.Frame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.commands.data.DataCommands;
@@ -216,8 +217,10 @@ public class AssertCommand {
             CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
             var result = this.predicate.apply(ctx);
             result.get(this.expectOk).ifPresentOrElse(message -> {
-                PackTestLibrary.INSTANCE.getHelperAt(sourceStack)
-                        .ifPresent(helper -> helper.fail(message));
+                GameTestHelper helper = ((PackTestSourceStack)sourceStack).packtest$getHelper();
+                if (helper != null) {
+                    helper.fail(message);
+                }
                 sourceStack.callback().onFailure();
                 Frame frame = execution.currentFrame();
                 frame.returnFailure();

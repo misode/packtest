@@ -3,7 +3,7 @@ package io.github.misode.packtest.commands;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.ContextChain;
-import io.github.misode.packtest.PackTestLibrary;
+import io.github.misode.packtest.PackTestSourceStack;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.execution.ChainModifiers;
@@ -27,7 +27,10 @@ public class SucceedCommand {
 
     static class SucceedCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {
         public void run(CommandSourceStack sourceStack, ContextChain<CommandSourceStack> chain, ChainModifiers modifiers, ExecutionControl<CommandSourceStack> execution) {
-            PackTestLibrary.INSTANCE.getHelperAt(sourceStack).ifPresent(GameTestHelper::succeed);
+            GameTestHelper helper = ((PackTestSourceStack)sourceStack).packtest$getHelper();
+            if (helper != null) {
+                helper.succeed();
+            }
             sourceStack.callback().onSuccess(1);
             Frame frame = execution.currentFrame();
             frame.returnSuccess(1);
@@ -37,13 +40,12 @@ public class SucceedCommand {
 
     private static Command<CommandSourceStack> when(boolean expectOk, AssertCommand.AssertPredicate predicate) {
         return ctx -> {
-            PackTestLibrary.INSTANCE.getHelperAt(ctx.getSource()).ifPresent(helper -> {
-                helper.succeedWhen(() -> {
-                    predicate.apply(ctx).get(expectOk).ifPresent(message -> {
-                        throw new GameTestAssertException(message);
-                    });
-                });
-            });
+            GameTestHelper helper = ((PackTestSourceStack)ctx.getSource()).packtest$getHelper();
+            if (helper != null) {
+                helper.succeedWhen(() -> predicate.apply(ctx).get(expectOk).ifPresent(message -> {
+                    throw new GameTestAssertException(message);
+                }));
+            }
             return 1;
         };
     }

@@ -8,6 +8,7 @@
     "BlockPredicateArgumentMixin",
     "BlockPredicateArgumentTagMixin",
     "CommandsMixin",
+    "CommandSourceStackMixin",
     "EntityArgumentMixin",
     "EntitySelectorMixin",
     "GameTestBatchMixin",
