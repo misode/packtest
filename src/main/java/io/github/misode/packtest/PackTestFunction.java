@@ -1,7 +1,9 @@
 package io.github.misode.packtest;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.*;
@@ -9,21 +11,18 @@ import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.commands.functions.InstantiatedFunction;
-import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.gametest.framework.StructureUtils;
-import net.minecraft.gametest.framework.TestFunction;
+import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
+import org.apache.commons.compress.utils.Lists;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,14 +33,12 @@ public class PackTestFunction {
     private static final String DEFAULT_TEMPLATE = "packtest:empty";
     private final ResourceLocation id;
     private final Map<String, String> directives;
-    private final @Nullable CommandFunction<CommandSourceStack> function;
-    private final @Nullable String parseError;
+    private final List<Step> steps;
 
-    public PackTestFunction(ResourceLocation id, Map<String, String> directives, @Nullable CommandFunction<CommandSourceStack> function, @Nullable String parseError) {
+    public PackTestFunction(ResourceLocation id, Map<String, String> directives, List<Step> steps) {
         this.id = id;
         this.directives = directives;
-        this.function = function;
-        this.parseError = parseError;
+        this.steps = steps;
     }
 
     public static PackTestFunction fromLines(ResourceLocation id, CommandDispatcher<CommandSourceStack> dispatcher, List<String> lines) {
@@ -61,15 +58,33 @@ public class PackTestFunction {
         CommandSourceStack sourceStack = new CommandSourceStack(
                 CommandSource.NULL, Vec3.ZERO, Vec2.ZERO, null, 2, "", CommonComponents.EMPTY, null, null
         );
-        CommandFunction<CommandSourceStack> function = null;
-        String parseError = null;
         try {
-            function = CommandFunction.fromLines(id, dispatcher, sourceStack, lines);
+            CommandFunction.fromLines(id, dispatcher, sourceStack, lines);
         } catch (IllegalArgumentException e) {
-            parseError = e.getMessage();
+            return new PackTestFunction(id, directives, List.of((sequence, source) -> {
+                throw new GameTestAssertException(e.getMessage());
+            }));
         }
 
-        return new PackTestFunction(id, directives, function, parseError);
+        List<Step> steps = Lists.newArrayList();
+        List<String> currentLines = Lists.newArrayList();
+        for (String line : lines) {
+            String sLine = line.stripLeading();
+            if (sLine.startsWith("await ")) {
+                if (!currentLines.isEmpty()) {
+                    steps.add(new ExecuteStep(currentLines, dispatcher));
+                    currentLines = Lists.newArrayList();
+                }
+                steps.add(new AwaitStep(line, dispatcher));
+            } else {
+                currentLines.add(line);
+            }
+        }
+        if (!currentLines.isEmpty()) {
+            steps.add(new ExecuteStep(currentLines, dispatcher));
+        }
+
+        return new PackTestFunction(id, directives, steps);
     }
 
     private String getTestName() {
@@ -123,7 +138,7 @@ public class PackTestFunction {
         }
     }
 
-    public TestFunction toTestFunction(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
+    public TestFunction toTestFunction(int permissionLevel) {
         return new TestFunction(
                 this.getBatchName(),
                 this.getTestName(),
@@ -134,58 +149,91 @@ public class PackTestFunction {
                 this.isRequired(),
                 1,
                 1,
-                createTestBody(permissionLevel, dispatcher));
+                createTestBody(permissionLevel));
     }
 
-    private Consumer<GameTestHelper> createTestBody(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
+    private Consumer<GameTestHelper> createTestBody(int permissionLevel) {
         return (helper) -> {
-            if (this.function == null) {
-                helper.fail(this.parseError != null ? this.parseError : "Failed to parse test function");
-                return;
-            }
-
-            AtomicBoolean hasFailed = new AtomicBoolean(false);
-            CommandSourceStack sourceStack = helper.getLevel().getServer().createCommandSourceStack()
+            CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
                     .withPosition(helper.absoluteVec(Vec3.ZERO).add(0, 1, 0))
                     .withPermission(permissionLevel)
-                    .withSuppressedOutput()
-                    .withCallback((success, result) -> hasFailed.set(!success));
+                    .withSuppressedOutput();
+            ((PackTestSourceStack) source).packtest$setHelper(helper);
 
-            ((PackTestSourceStack)sourceStack).packtest$setHelper(helper);
-
-            InstantiatedFunction<CommandSourceStack> instantiatedFn;
-            try {
-                instantiatedFn = function.instantiate(null, dispatcher, sourceStack);
-            } catch (FunctionInstantiationException e) {
-                String message = e.messageComponent().getString();
-                helper.fail("Failed to instantiate test function: " + message);
-                return;
-            }
-
-            Vec3 dummyPos = this.getDummyPos(sourceStack).orElse(null);
+            Vec3 dummyPos = this.getDummyPos(source).orElse(null);
             Dummy dummy;
             if (dummyPos != null) {
                 try {
                     dummy = Dummy.createRandom(helper.getLevel().getServer(), helper.getLevel().dimension(), dummyPos);
                     dummy.setOnGround(true); // little hack because we know the dummy will be on the ground
-                    sourceStack = sourceStack.withEntity(dummy);
+                    source = source.withEntity(dummy);
                 } catch (IllegalArgumentException e) {
-                    helper.fail("Failed to initialize test with dummy");
+                    throw new GameTestAssertException("Failed to initialize test with dummy");
                 }
             }
 
-            CommandSourceStack finalSourceStack = sourceStack;
-            Commands.executeCommandInContext(sourceStack, execution -> ExecutionContext.queueInitialFunctionCall(
-                    execution,
-                    instantiatedFn,
-                    finalSourceStack,
-                    CommandResultCallback.EMPTY));
-
-            if (hasFailed.get()) {
-                helper.fail("Test failed without a message");
-            } else if (!((PackTestHelper)helper).packtest$isFinalCheckAdded()) {
-                helper.succeed();
+            GameTestSequence sequence = helper.startSequence();
+            for (Step step : this.steps) {
+                step.register(sequence, source);
             }
+            sequence.thenSucceed();
         };
+    }
+
+    public interface Step {
+        void register(GameTestSequence sequence, CommandSourceStack source);
+    }
+
+    public static class ExecuteStep implements Step {
+        private final List<String> lines;
+        private final CommandDispatcher<CommandSourceStack> dispatcher;
+
+        public ExecuteStep(List<String> lines, CommandDispatcher<CommandSourceStack> dispatcher) {
+            this.lines = lines;
+            this.dispatcher = dispatcher;
+        }
+
+        @Override
+        public void register(GameTestSequence sequence, CommandSourceStack source) {
+            CommandFunction<CommandSourceStack> function;
+            try {
+                ResourceLocation id = new ResourceLocation("packtest", "internal");
+                function = CommandFunction.fromLines(id, this.dispatcher, source, this.lines);
+            } catch (IllegalArgumentException e) {
+                throw new GameTestAssertException(e.getMessage());
+            }
+            InstantiatedFunction<CommandSourceStack> instantiated;
+            try {
+                instantiated = function.instantiate(null, this.dispatcher, source);
+            } catch (FunctionInstantiationException e) {
+                String message = e.messageComponent().getString();
+                throw new GameTestAssertException("Failed to instantiate test function: " + message);
+            }
+            sequence.thenExecute(() -> Commands.executeCommandInContext(
+                    source,
+                    e -> ExecutionContext.queueInitialFunctionCall(e, instantiated, source, CommandResultCallback.EMPTY)
+            ));
+        }
+    }
+
+    public static class AwaitStep implements Step {
+        private final String line;
+        private final CommandDispatcher<CommandSourceStack> dispatcher;
+
+        public AwaitStep(String line, CommandDispatcher<CommandSourceStack> dispatcher) {
+            this.line = line;
+            this.dispatcher = dispatcher;
+        }
+
+        @Override
+        public void register(GameTestSequence sequence, CommandSourceStack source) {
+            ParseResults<CommandSourceStack> parseResults = dispatcher.parse(line, source);
+            ContextChain<CommandSourceStack> chain = ContextChain.tryFlatten(parseResults.getContext().build(line))
+                    .orElseThrow(() -> new GameTestAssertException("Unknown or incomplete command"));
+            sequence.thenWaitUntil(() -> Commands.executeCommandInContext(
+                    source,
+                    e -> ExecutionContext.queueInitialCommandExecution(e, line, chain, source, CommandResultCallback.EMPTY)
+            ));
+        }
     }
 }

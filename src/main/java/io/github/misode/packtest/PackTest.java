@@ -34,9 +34,10 @@ public class PackTest implements ModInitializer {
 				SingletonArgumentInfo.contextFree(DirectionArgument::direction));
 		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
 			AssertCommand.register(dispatcher, buildContext);
+			AwaitCommand.register(dispatcher, buildContext);
 			FailCommand.register(dispatcher);
 			DummyCommand.register(dispatcher);
-			SucceedCommand.register(dispatcher, buildContext);
+			SucceedCommand.register(dispatcher);
 		});
 	}
 

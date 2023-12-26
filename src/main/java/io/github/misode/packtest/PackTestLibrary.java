@@ -77,7 +77,7 @@ public class PackTestLibrary implements PreparableReloadListener {
                 } else {
                     val.registerBatchHook(this.permissionLevel, beforeBatch, "before");
                     val.registerBatchHook(this.permissionLevel, afterBatch, "after");
-                    testsBuilder.add(val.toTestFunction(this.permissionLevel, this.dispatcher));
+                    testsBuilder.add(val.toTestFunction(this.permissionLevel));
                     namespacesBuilder.add(id.getNamespace());
                 }
                 return null;
