@@ -7,6 +7,7 @@ import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.*;
+import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
@@ -75,7 +76,11 @@ public class PackTestFunction {
                     steps.add(new ExecuteStep(currentLines, dispatcher));
                     currentLines = Lists.newArrayList();
                 }
-                steps.add(new AwaitStep(line, dispatcher));
+                if (sLine.startsWith("await for ")) {
+                    steps.add(new IdleStep(line.substring("await for ".length())));
+                } else {
+                    steps.add(new AwaitStep(line, dispatcher));
+                }
             } else {
                 currentLines.add(line);
             }
@@ -184,47 +189,27 @@ public class PackTestFunction {
         void register(GameTestSequence sequence, CommandSourceStack source);
     }
 
-    public static class ExecuteStep implements Step {
-        private final List<String> lines;
-        private final CommandDispatcher<CommandSourceStack> dispatcher;
-
-        public ExecuteStep(List<String> lines, CommandDispatcher<CommandSourceStack> dispatcher) {
-            this.lines = lines;
-            this.dispatcher = dispatcher;
-        }
-
+    public record ExecuteStep(List<String> lines, CommandDispatcher<CommandSourceStack> dispatcher) implements Step {
         @Override
         public void register(GameTestSequence sequence, CommandSourceStack source) {
-            CommandFunction<CommandSourceStack> function;
             try {
                 ResourceLocation id = new ResourceLocation("packtest", "internal");
-                function = CommandFunction.fromLines(id, this.dispatcher, source, this.lines);
+                CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, this.dispatcher, source, this.lines);
+                InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, this.dispatcher, source);
+                sequence.thenExecute(() -> Commands.executeCommandInContext(
+                        source,
+                        e -> ExecutionContext.queueInitialFunctionCall(e, instantiated, source, CommandResultCallback.EMPTY)
+                ));
             } catch (IllegalArgumentException e) {
                 throw new GameTestAssertException(e.getMessage());
-            }
-            InstantiatedFunction<CommandSourceStack> instantiated;
-            try {
-                instantiated = function.instantiate(null, this.dispatcher, source);
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
                 throw new GameTestAssertException("Failed to instantiate test function: " + message);
             }
-            sequence.thenExecute(() -> Commands.executeCommandInContext(
-                    source,
-                    e -> ExecutionContext.queueInitialFunctionCall(e, instantiated, source, CommandResultCallback.EMPTY)
-            ));
         }
     }
 
-    public static class AwaitStep implements Step {
-        private final String line;
-        private final CommandDispatcher<CommandSourceStack> dispatcher;
-
-        public AwaitStep(String line, CommandDispatcher<CommandSourceStack> dispatcher) {
-            this.line = line;
-            this.dispatcher = dispatcher;
-        }
-
+    public record AwaitStep(String line, CommandDispatcher<CommandSourceStack> dispatcher) implements Step {
         @Override
         public void register(GameTestSequence sequence, CommandSourceStack source) {
             ParseResults<CommandSourceStack> parseResults = dispatcher.parse(line, source);
@@ -234,6 +219,18 @@ public class PackTestFunction {
                     source,
                     e -> ExecutionContext.queueInitialCommandExecution(e, line, chain, source, CommandResultCallback.EMPTY)
             ));
+        }
+    }
+
+    public record IdleStep(String argument) implements Step {
+        @Override
+        public void register(GameTestSequence sequence, CommandSourceStack source) {
+            try {
+                int ticks = TimeArgument.time().parse(new StringReader(argument));
+                sequence.thenIdle(ticks);
+            } catch (CommandSyntaxException e) {
+                throw new GameTestAssertException(e.getMessage());
+            }
         }
     }
 }

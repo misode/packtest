@@ -66,7 +66,7 @@ public class AssertCommand {
         dispatcher.register(assertBuilder);
     }
 
-    public static LiteralArgumentBuilder<CommandSourceStack> addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
+    public static void addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
         builder
                 .then(literal("block")
                         .then(argument("pos", BlockPosArgument.blockPos())
@@ -100,7 +100,6 @@ public class AssertCommand {
                             .executes(expect.apply(ctx -> assertData(ctx, dataProvider))))));
         }
 
-        return builder;
     }
 
     private static AssertResult assertBlock(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -243,23 +242,23 @@ public class AssertCommand {
         AssertResult applyThrows(CommandContext<CommandSourceStack> elem) throws CommandSyntaxException;
     }
 
-    private static AssertResult err(String expected) {
+    public static AssertResult err(String expected) {
         return new ExpectedGot(false, expected, null);
     }
-    
-    private static AssertResult err(String expected, String got) {
+
+    public static AssertResult err(String expected, String got) {
         return new ExpectedGot(false, expected, got);
     }
-    
-    private static AssertResult ok(String match) {
+
+    public static AssertResult ok(String match) {
         return new ExpectedGot(true, match, null);
     }
 
-    private static AssertResult ok(String match, String got) {
+    public static AssertResult ok(String match, String got) {
         return new ExpectedGot(true, match, got);
     }
 
-    private static AssertResult result(boolean ok, String expected, String got) {
+    public static AssertResult result(boolean ok, String expected, String got) {
         return new ExpectedGot(ok, expected, got);
     }
 
