@@ -19,7 +19,10 @@
     "LogTestReporterMixin",
     "MinecraftServerMixin",
     "PlayerListMixin",
+    "PlaySoundCommandMixin",
+    "RaidMixin",
     "ReloadableServerResourcesMixin",
+    "ServerLevelMixin",
     "ServerPlayerMixin",
     "StructureUtilsMixin",
     "TestCommandMixin"

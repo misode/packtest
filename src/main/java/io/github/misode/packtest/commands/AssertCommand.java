@@ -2,6 +2,7 @@ package io.github.misode.packtest.commands;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -22,6 +23,7 @@ import net.minecraft.commands.execution.ChainModifiers;
 import net.minecraft.commands.execution.CustomCommandExecutor;
 import net.minecraft.commands.execution.ExecutionControl;
 import net.minecraft.commands.execution.Frame;
+import net.minecraft.commands.synchronization.SuggestionProviders;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -106,7 +108,14 @@ public class AssertCommand {
                         .then(argument("pattern", StringArgumentType.string())
                                 .executes(expect.apply(AssertCommand::assertChatUnfiltered))
                                 .then(argument("receivers", EntityArgument.players())
-                                        .executes(expect.apply(AssertCommand::assertChatFiltered)))));
+                                        .executes(expect.apply(AssertCommand::assertChatFiltered)))))
+                .then(literal("sound")
+                        .then(argument("sound", ResourceLocationArgument.id())
+                                .suggests(SuggestionProviders.AVAILABLE_SOUNDS)
+                                .then(argument("distance", IntegerArgumentType.integer(0))
+                                        .executes(expect.apply(AssertCommand::assertSoundUnfiltered))
+                                        .then(argument("receivers", EntityArgument.players())
+                                                .executes(expect.apply(AssertCommand::assertSoundFiltered))))));
 
         for(DataCommands.DataProvider dataProvider : DataCommands.SOURCE_PROVIDERS) {
             builder.then(dataProvider.wrap(literal("data"),
@@ -240,6 +249,31 @@ public class AssertCommand {
                 : all.size() == 1 ? all.get(0)
                 : all.get(all.size() - 1) + " and " + (all.size() - 1) + " more";
         return result(!matching.isEmpty(), pattern + " in chat", got);
+    }
+
+    private static AssertResult assertSoundUnfiltered(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        return assertSound(ctx, m -> true);
+    }
+
+    private static AssertResult assertSoundFiltered(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Collection<ServerPlayer> receivers = EntityArgument.getPlayers(ctx, "receivers");
+        List<String> receiverNames = receivers.stream().map(p -> p.getName().getString()).toList();
+        return assertSound(ctx, m -> receiverNames.contains(m.player()));
+    }
+
+    private static AssertResult assertSound(CommandContext<CommandSourceStack> ctx, Predicate<SoundListener.Event> filter) throws CommandSyntaxException {
+        ResourceLocation sound = ResourceLocationArgument.getId(ctx, "sound");
+        GameTestHelper helper = ((PackTestSourceStack)ctx.getSource()).packtest$getHelper();
+        if (helper == null) {
+            throw ERROR_NO_HELPER.create();
+        }
+        SoundListener soundListener = ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$getSoundListener();
+        List<String> matching = soundListener.filter(e -> filter.test(e) && e.sound().equals(sound));
+        List<String> all = matching.isEmpty() ? soundListener.filter(filter) : matching;
+        String got = all.isEmpty() ? "no sounds"
+                : all.size() == 1 ? all.get(0)
+                : all.get(all.size() - 1) + " and " + (all.size() - 1) + " more";
+        return result(!matching.isEmpty(), sound + " to play", got);
     }
 
     static class AssertCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {

@@ -181,6 +181,10 @@ public class PackTestFunction {
             ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$setChatListener(chatListener);
             helper.onEachTick(chatListener::reset);
 
+            SoundListener soundListener = new SoundListener();
+            ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$setSoundListener(soundListener);
+            helper.onEachTick(soundListener::reset);
+
             GameTestSequence sequence = helper.startSequence();
             for (Step step : this.steps) {
                 step.register(sequence, source);

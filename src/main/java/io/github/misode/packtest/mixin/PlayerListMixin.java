@@ -4,13 +4,16 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
+import io.github.misode.packtest.SoundListener;
 import io.github.misode.packtest.dummy.Dummy;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,6 +23,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 /**
  * Fixes starting position of dummies when they load in.
  * Respawns dummies and in the correct position.
+ * Log respawn anchor depletion sound.
  */
 @Mixin(PlayerList.class)
 public class PlayerListMixin {
@@ -47,5 +51,10 @@ public class PlayerListMixin {
             dummy.moveTo(pos.x, pos.y, pos.z, 0, 0);
             dummy.teleportTo(dummy.serverLevel(), pos.x, pos.y, pos.z, 0, 0);
         }
+    }
+
+    @Inject(method = "respawn", at = @At(value = "NEW", target = "(Lnet/minecraft/core/Holder;Lnet/minecraft/sounds/SoundSource;DDDFFJ)Lnet/minecraft/network/protocol/game/ClientboundSoundPacket;"))
+    private void logSound(ServerPlayer oldPlayer, boolean bl, CallbackInfoReturnable<ServerPlayer> cir, @Local(ordinal = 1) ServerPlayer player, @Local(ordinal = 0) BlockPos pos) {
+        SoundListener.broadcast(player, new Vec3(pos.getX(), pos.getY(), pos.getZ()), SoundEvents.RESPAWN_ANCHOR_DEPLETE);
     }
 }

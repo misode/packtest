@@ -1,7 +1,7 @@
 package io.github.misode.packtest;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import org.apache.commons.compress.utils.Lists;
 
 import java.util.List;
@@ -11,7 +11,7 @@ public class ChatListener {
 
     private static final List<ChatListener> listeners = Lists.newArrayList();
 
-    public static void broadcast(ServerPlayer player, Component chatMessage) {
+    public static void broadcast(Player player, Component chatMessage) {
         Message message = new Message(player.getName().getString(), chatMessage.getString());
         ChatListener.listeners.forEach(l -> l.messages.add(message));
     }
