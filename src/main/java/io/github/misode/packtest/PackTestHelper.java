@@ -1,5 +1,7 @@
 package io.github.misode.packtest;
 
+import net.minecraft.gametest.framework.GameTestInfo;
+
 public interface PackTestHelper {
-    boolean packtest$isFinalCheckAdded();
+    GameTestInfo packtest$getInfo();
 }

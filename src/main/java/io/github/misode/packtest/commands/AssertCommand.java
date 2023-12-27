@@ -2,13 +2,14 @@ package io.github.misode.packtest.commands;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import io.github.misode.packtest.PackTestArgumentSource;
-import io.github.misode.packtest.PackTestSourceStack;
+import io.github.misode.packtest.*;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -25,8 +26,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.commands.data.DataCommands;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -42,15 +45,21 @@ import net.minecraft.world.scores.ScoreHolder;
 import net.minecraft.world.scores.Scoreboard;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class AssertCommand {
+    private static final SimpleCommandExceptionType ERROR_NO_HELPER = new SimpleCommandExceptionType(
+            Component.literal("Not inside a test")
+    );
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_PREDICATE = (ctx, suggestions) -> {
         LootDataManager lootData = ctx.getSource().getServer().getLootData();
         return SharedSuggestionProvider.suggestResource(lootData.getKeys(LootDataType.PREDICATE), suggestions);
@@ -92,14 +101,18 @@ public class AssertCommand {
                                         .then(literal("matches")
                                                 .then(argument("range", RangeArgument.intRange())
                                                         .executes(expect.apply(AssertCommand::assertScoreRange))))
-                                )));
+                                )))
+                .then(literal("chat")
+                        .then(argument("pattern", StringArgumentType.string())
+                                .executes(expect.apply(AssertCommand::assertChatUnfiltered))
+                                .then(argument("receivers", EntityArgument.players())
+                                        .executes(expect.apply(AssertCommand::assertChatFiltered)))));
 
         for(DataCommands.DataProvider dataProvider : DataCommands.SOURCE_PROVIDERS) {
             builder.then(dataProvider.wrap(literal("data"),
                     dataBuilder -> dataBuilder.then(argument("path", NbtPathArgument.nbtPath())
                             .executes(expect.apply(ctx -> assertData(ctx, dataProvider))))));
         }
-
     }
 
     private static AssertResult assertBlock(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -201,6 +214,32 @@ public class AssertCommand {
         NbtPathArgument.NbtPath path = NbtPathArgument.getPath(ctx, "path");
         Tag data = dataProvider.access(ctx).getData();
         return result(path.countMatching(data) > 0, path.asString() + " to match", data.getAsString());
+    }
+
+    private static AssertResult assertChatUnfiltered(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        return assertChat(ctx, m -> true);
+    }
+
+    private static AssertResult assertChatFiltered(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        Collection<ServerPlayer> receivers = EntityArgument.getPlayers(ctx, "receivers");
+        List<String> receiverNames = receivers.stream().map(p -> p.getName().getString()).toList();
+        return assertChat(ctx, m -> receiverNames.contains(m.player()));
+    }
+
+    private static AssertResult assertChat(CommandContext<CommandSourceStack> ctx, Predicate<ChatListener.Message> filter) throws CommandSyntaxException {
+        String pattern = StringArgumentType.getString(ctx, "pattern");
+        GameTestHelper helper = ((PackTestSourceStack)ctx.getSource()).packtest$getHelper();
+        if (helper == null) {
+            throw ERROR_NO_HELPER.create();
+        }
+        ChatListener chatListener = ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$getChatListener();
+        Predicate<String> predicate = Pattern.compile(pattern).asPredicate();
+        List<String> matching = chatListener.filter(m -> filter.test(m) && predicate.test(m.content()));
+        List<String> all = matching.isEmpty() ? chatListener.filter(filter) : matching;
+        String got = all.isEmpty() ? "no messages"
+                : all.size() == 1 ? all.get(0)
+                : all.get(all.size() - 1) + " and " + (all.size() - 1) + " more";
+        return result(!matching.isEmpty(), pattern + " in chat", got);
     }
 
     static class AssertCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {

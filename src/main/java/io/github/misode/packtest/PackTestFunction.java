@@ -177,6 +177,10 @@ public class PackTestFunction {
                 }
             }
 
+            ChatListener chatListener = new ChatListener();
+            ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$setChatListener(chatListener);
+            helper.onEachTick(chatListener::reset);
+
             GameTestSequence sequence = helper.startSequence();
             for (Step step : this.steps) {
                 step.register(sequence, source);
