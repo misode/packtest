@@ -1,5 +1,6 @@
 package io.github.misode.packtest.mixin;
 
+import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -15,6 +16,7 @@ import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
@@ -28,6 +30,21 @@ public class PlayerListMixin {
         if (player instanceof Dummy dummy) {
             Vec3 pos = dummy.originalSpawn;
             dummy.moveTo(pos.x, pos.y, pos.z, 0, 0);
+        }
+    }
+
+    @ModifyReturnValue(method = "load", at = @At(value = "RETURN"))
+    private CompoundTag skipLoadDummy(CompoundTag original, @Local(ordinal = 0) ServerPlayer player) {
+        if (player instanceof Dummy) {
+            return null;
+        }
+        return original;
+    }
+
+    @Inject(method = "save", at = @At(value = "HEAD"), cancellable = true)
+    private void skipSaveDummy(ServerPlayer player, CallbackInfo ci) {
+        if (player instanceof Dummy) {
+            ci.cancel();
         }
     }
 
