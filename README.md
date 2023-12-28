@@ -1,6 +1,8 @@
 # PackTest
 PackTest allows you to write game tests in a data pack. Tests are `*.mcfunction` files in a `tests` folder. They can be used to test custom data packs.
 
+[![modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg)](https://modrinth.com/mod/packtest)
+
 ## Example
 **`data/example/tests/foo.mcfunction`**
 ```mcfunction
@@ -17,6 +19,19 @@ setblock ~1 ~1 ~1 grass_block
 execute if block ~1 ~1 ~1 stone run succeed
 
 fail "Oh no"
+```
+
+### Async tests
+Test functions can be asynchronous, using the `await` keyword!
+```mcfunction
+setblock ~ ~ ~ stone
+summon item ~ ~6 ~
+
+await entity @e[type=item,distance=..2]
+
+await delay 1s
+
+data merge entity @e[type=item,distance=..2,limit=1] {Motion: [0.0, 0.01, 0.0]}
 ```
 
 ## Running tests
@@ -40,14 +55,27 @@ To run tests automatically in GitHub Actions, you can use the [packtest_runner](
 
 ### `succeed`
 * `succeed`: always succeeds the current test and returns from the function
-* `succeed when <condition>`: succeeds when the condition is successful, tries every tick until the test times out
-* `succeed when not <condition>`: succeeds when the condition is unsuccessful, tries every tick until the test times out
 
 ### `assert`
 * `assert <condition>`: if condition is unsuccessful, fails the current test and returns from the function
 * `assert not <condition>`: if condition is successful, fails the current test and returns from the function
 
-### `dummy`
+### `await`
+* `await <condition>`: similar to assert, but keeps trying the condition every tick until the test times our or the condition succeeds
+* `await not <condition>`: keeps trying the condition until it fails
+* `await delay <time>`: waits for a specified time with unit
+
+### Conditions
+* `block <pos> <block>`: checks if the block at the specified position matches the block predicate
+* `data ...`: checks NBT data using the same syntax as `execute if score`
+* `entity <selector>`: checks if the selector matches any entity (can also find entities outside the structure bounds)
+* `predicate <predicate>`: checks a predicate in a data pack
+* `score ...`: checks scores using the same syntax as `execute if score`
+* `chat <pattern> [<receivers>]`: checks whether a chat message was sent in the past tick matching a regex pattern
+
+## Dummies
+Fake players can be spawned using the `/dummy` command. Dummies won't save or load their data from disk, they will also not load their skin.
+
 * `dummy <name> spawn`: spawns a new dummy
 * `dummy <name> respawn`: respawns the dummy after it has been killed
 * `dummy <name> leave`: makes the dummy leave the server
@@ -62,13 +90,6 @@ To run tests automatically in GitHub Actions, you can use the [packtest_runner](
 * `dummy <name> use entity <entity>`: makes the dummy use its hand item on an entity
 * `dummy <name> attack <entity>`: makes the dummy attack an entity with its mainhand
 * `dummy <name> mine <pos>`: makes the dummy mine a block
-
-## Conditions
-* `block <pos> <block>`: checks if the block at the specified position matches the block predicate
-* `data ...`: checks NBT data using the same syntax as `execute if score`
-* `entity <selector>`: checks if the selector matches any entity (can also find entities outside the structure bounds)
-* `predicate <predicate>`: checks a predicate in a data pack
-* `score ...`: checks scores using the same syntax as `execute if score`
 
 ## Directives
 Tests can be customized by placing certain directives as special comments at the start of the test function.
