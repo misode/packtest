@@ -25,7 +25,7 @@ public class AwaitCommand {
 
     public static void addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertCommand.AssertPredicate, Command<CommandSourceStack>> expect) {
         AssertCommand.addConditions(builder, buildContext, expect);
-        builder.then(literal("for")
+        builder.then(literal("delay")
                 .then(argument("time", TimeArgument.time())
                         .executes(expect.apply(ctx -> AssertCommand.err("Timed out")))));
     }

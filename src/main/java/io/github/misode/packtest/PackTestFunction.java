@@ -76,8 +76,8 @@ public class PackTestFunction {
                     steps.add(new ExecuteStep(currentLines, dispatcher));
                     currentLines = Lists.newArrayList();
                 }
-                if (sLine.startsWith("await for ")) {
-                    steps.add(new IdleStep(line.substring("await for ".length())));
+                if (sLine.startsWith("await delay ")) {
+                    steps.add(new IdleStep(line.substring("await delay ".length())));
                 } else {
                     steps.add(new AwaitStep(line, dispatcher));
                 }
