@@ -1,6 +1,5 @@
 package io.github.misode.packtest.mixin;
 
-import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -12,12 +11,16 @@ import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.storage.PlayerDataStorage;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+import java.util.Map;
 
 /**
  * Fixes starting position of dummies when they load in.
@@ -33,18 +36,28 @@ public class PlayerListMixin {
         }
     }
 
-    @ModifyReturnValue(method = "load", at = @At(value = "RETURN"))
-    private CompoundTag skipLoadDummy(CompoundTag original, @Local(ordinal = 0) ServerPlayer player) {
+    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/storage/PlayerDataStorage;load(Lnet/minecraft/world/entity/player/Player;)Lnet/minecraft/nbt/CompoundTag;"))
+    private CompoundTag skipLoadDummy(PlayerDataStorage playerIo, Player player, Operation<CompoundTag> original) {
         if (player instanceof Dummy) {
             return null;
+        } else {
+            return original.call(playerIo, player);
         }
-        return original;
     }
 
     @Inject(method = "save", at = @At(value = "HEAD"), cancellable = true)
     private void skipSaveDummy(ServerPlayer player, CallbackInfo ci) {
         if (player instanceof Dummy) {
             ci.cancel();
+        }
+    }
+
+    @WrapOperation(method = "getPlayerAdvancements", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
+    private Object getPlayerAdvancements(Map<Object, Object> map, Object key, Operation<Object> original, @Local(ordinal = 0) ServerPlayer player) {
+        if (player instanceof Dummy) {
+            return null;
+        } else {
+            return original.call(map, key);
         }
     }
 
