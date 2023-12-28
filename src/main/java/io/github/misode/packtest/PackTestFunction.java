@@ -18,12 +18,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import org.apache.commons.compress.utils.Lists;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -67,14 +63,14 @@ public class PackTestFunction {
             }));
         }
 
-        List<Step> steps = Lists.newArrayList();
-        List<String> currentLines = Lists.newArrayList();
+        List<Step> steps = new ArrayList<>();
+        List<String> currentLines = new ArrayList<>();
         for (String line : lines) {
             String sLine = line.stripLeading();
             if (sLine.startsWith("await ")) {
                 if (!currentLines.isEmpty()) {
                     steps.add(new ExecuteStep(currentLines, dispatcher));
-                    currentLines = Lists.newArrayList();
+                    currentLines = new ArrayList<>();
                 }
                 if (sLine.startsWith("await delay ")) {
                     steps.add(new IdleStep(line.substring("await delay ".length())));

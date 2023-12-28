@@ -2,14 +2,14 @@ package io.github.misode.packtest;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import org.apache.commons.compress.utils.Lists;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
 public class ChatListener {
 
-    private static final List<ChatListener> listeners = Lists.newArrayList();
+    private static final List<ChatListener> listeners = new ArrayList<>();
 
     public static void broadcast(ServerPlayer player, Component chatMessage) {
         Message message = new Message(player.getName().getString(), chatMessage.getString());
@@ -20,7 +20,7 @@ public class ChatListener {
         ChatListener.listeners.add(this);
     }
 
-    public final List<Message> messages = Lists.newArrayList();
+    public final List<Message> messages = new ArrayList<>();
 
     public void stop() {
         ChatListener.listeners.remove(this);
