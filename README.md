@@ -46,7 +46,37 @@ Tests can be run in-game using the `test` command.
 ### Auto test server
 Tests can also be run automatically, for instance in a CI environment. When `-Dpacktest.auto` is set, the game test server will start automatically with the loaded tests. The process will exit when all tests have finished with the exist code set to the number of failed tests. 
 
-To run tests automatically in GitHub Actions, you can use the [packtest_runner](https://github.com/CarbonSmasher/packtest_runner) action.
+The following example can be adapted into a GitHub action workflow.
+```yaml
+on: [push, pull_request]
+
+env:
+  # Make sure to update these links!
+  TEST_FABRIC_SERVER: https://meta.fabricmc.net/v2/versions/loader/1.20.4/0.15.3/0.11.2/server/jar
+  TEST_FABRIC_API: https://cdn.modrinth.com/data/P7dR8mSH/versions/JMCwDuki/fabric-api-0.92.0%2B1.20.4.jar
+  TEST_PACKTEST: https://cdn.modrinth.com/data/XsKUhp45/versions/Gq3rUEy6/packtest-1.3-mc1.20.4.jar
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Download and prepare files
+        run: |
+          curl -o server.jar $TEST_FABRIC_SERVER
+          mkdir mods
+          curl -o mods/fabric-api.jar $TEST_FABRIC_API
+          curl -o mods/packtest.jar $TEST_PACKTEST
+          mkdir -p world/datapacks
+          cp -r datapack world/datapacks/datapack
+      - name: Run tests
+        run: |
+          java -Xmx2G -Dpacktest.auto -jar server.jar nogui
+```
 
 ## Commands
 
