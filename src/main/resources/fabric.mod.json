@@ -2,16 +2,15 @@
 	"schemaVersion": 1,
 	"id": "packtest",
 	"version": "${version}",
-	"name": "Example mod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "PackTest",
+	"description": "Testing data packs, with data packs!",
 	"authors": [
-		"Me!"
+		"Misode"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/misode/packtest"
 	},
-	"license": "CC0-1.0",
+	"license": "MIT",
 	"icon": "assets/packtest/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -19,7 +18,6 @@
 			"io.github.misode.packtest.PackTest"
 		]
 	},
-	"accessWidener" : "packtest.accesswidener",
 	"mixins": [
 		"packtest.mixins.json"
 	],
@@ -28,8 +26,5 @@
 		"minecraft": "~1.20.4",
 		"java": ">=17",
 		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
 	}
 }
