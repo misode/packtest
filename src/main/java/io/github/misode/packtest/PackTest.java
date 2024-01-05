@@ -2,12 +2,9 @@ package io.github.misode.packtest;
 
 import io.github.misode.packtest.commands.*;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.ArgumentTypeRegistry;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.minecraft.commands.synchronization.SingletonArgumentInfo;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestServer;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.world.level.storage.LevelStorageSource;
 import org.slf4j.Logger;
@@ -28,10 +25,6 @@ public class PackTest implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		ArgumentTypeRegistry.registerArgumentType(
-				new ResourceLocation("packtest", "direction"),
-				DirectionArgument.class,
-				SingletonArgumentInfo.contextFree(DirectionArgument::direction));
 		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
 			AssertCommand.register(dispatcher, buildContext);
 			AwaitCommand.register(dispatcher, buildContext);

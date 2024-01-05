@@ -3,12 +3,13 @@ package io.github.misode.packtest.commands;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.PackTestPlayerName;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
@@ -36,6 +37,22 @@ import static net.minecraft.commands.Commands.literal;
 
 public class DummyCommand {
 
+    public static final SuggestionProvider<CommandSourceStack> SUGGEST_DIRECTION = (ctx, builder) -> {
+        for (var d : Direction.values()) {
+            builder.suggest(d.getName());
+        }
+        return builder.buildFuture();
+    };
+    public static final SuggestionProvider<CommandSourceStack> SUGGEST_DUMMY_NAME = (ctx, builder) -> {
+        builder.suggest("@s");
+        PlayerList playerList = ctx.getSource().getServer().getPlayerList();
+        playerList.getPlayers().forEach(player -> {
+            if (player instanceof Dummy dummy) {
+                builder.suggest(dummy.getUsername());
+            }
+        });
+        return builder.buildFuture();
+    };
     private static final SimpleCommandExceptionType ERROR_DUMMY_NOT_FOUND = new SimpleCommandExceptionType(
             Component.literal("No dummy was found")
     );
@@ -63,64 +80,53 @@ public class DummyCommand {
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(literal("dummy").then(dummyName()
-                .then(literal("spawn")
-                        .executes(DummyCommand::spawn))
-                .then(literal("leave")
-                        .executes(DummyCommand::leave))
-                .then(literal("respawn")
-                        .executes(DummyCommand::respawn))
-                .then(literal("jump")
-                        .executes(DummyCommand::jump))
-                .then(literal("sneak")
-                        .then(argument("active", BoolArgumentType.bool())
-                            .executes(DummyCommand::sneak)))
-                .then(literal("sprint")
-                        .then(argument("active", BoolArgumentType.bool())
-                                .executes(DummyCommand::sprint)))
-                .then(literal("drop")
-                        .executes(ctx -> dropMainhand(ctx, false))
-                        .then(literal("all")
-                                .executes(ctx -> dropMainhand(ctx, true))))
-                .then(literal("swap")
-                        .executes(DummyCommand::swap))
-                .then(literal("selectslot")
-                        .then(argument("slot", IntegerArgumentType.integer(1, 9))
-                            .executes(DummyCommand::selectSlot)))
-                .then(literal("use")
-                        .then(literal("item")
-                                .executes(DummyCommand::useItem))
-                        .then(literal("block")
-                                .then(argument("pos", Vec3Argument.vec3(false))
-                                        .executes(ctx -> useBlock(ctx, Direction.UP))
-                                        .then(argument("direction", DirectionArgument.direction())
-                                                .executes(ctx -> useBlock(ctx, DirectionArgument.getDirection(ctx, "direction"))))))
-                        .then(literal("entity")
-                                .then(argument("entity", EntityArgument.entity())
-                                        .executes(ctx -> useEntity(ctx, null))
+        dispatcher.register(literal("dummy")
+                .then(argument("dummy", EntityArgument.entity())
+                        .suggests(SUGGEST_DUMMY_NAME)
+                        .then(literal("spawn")
+                                .executes(DummyCommand::spawn))
+                        .then(literal("leave")
+                                .executes(DummyCommand::leave))
+                        .then(literal("respawn")
+                                .executes(DummyCommand::respawn))
+                        .then(literal("jump")
+                                .executes(DummyCommand::jump))
+                        .then(literal("sneak")
+                                .then(argument("active", BoolArgumentType.bool())
+                                    .executes(DummyCommand::sneak)))
+                        .then(literal("sprint")
+                                .then(argument("active", BoolArgumentType.bool())
+                                        .executes(DummyCommand::sprint)))
+                        .then(literal("drop")
+                                .executes(ctx -> dropMainhand(ctx, false))
+                                .then(literal("all")
+                                        .executes(ctx -> dropMainhand(ctx, true))))
+                        .then(literal("swap")
+                                .executes(DummyCommand::swap))
+                        .then(literal("selectslot")
+                                .then(argument("slot", IntegerArgumentType.integer(1, 9))
+                                    .executes(DummyCommand::selectSlot)))
+                        .then(literal("use")
+                                .then(literal("item")
+                                        .executes(DummyCommand::useItem))
+                                .then(literal("block")
                                         .then(argument("pos", Vec3Argument.vec3(false))
-                                                .executes(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos")))))))
-                .then(literal("attack")
-                        .then(argument("entity", EntityArgument.entity())
-                                .executes(DummyCommand::attackEntity)))
-                .then(literal("mine")
-                        .then(argument("pos", BlockPosArgument.blockPos())
-                                .executes(DummyCommand::mineBlock)))
+                                                .executes(ctx -> useBlock(ctx, Direction.UP))
+                                                .then(argument("direction", StringArgumentType.word())
+                                                        .suggests(SUGGEST_DIRECTION)
+                                                        .executes(ctx -> useBlock(ctx, Direction.byName(StringArgumentType.getString(ctx, "direction")))))))
+                                .then(literal("entity")
+                                        .then(argument("entity", EntityArgument.entity())
+                                                .executes(ctx -> useEntity(ctx, null))
+                                                .then(argument("pos", Vec3Argument.vec3(false))
+                                                        .executes(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos")))))))
+                        .then(literal("attack")
+                                .then(argument("entity", EntityArgument.entity())
+                                        .executes(DummyCommand::attackEntity)))
+                        .then(literal("mine")
+                                .then(argument("pos", BlockPosArgument.blockPos())
+                                        .executes(DummyCommand::mineBlock)))
         ));
-    }
-
-    private static RequiredArgumentBuilder<CommandSourceStack, EntitySelector> dummyName() {
-        return argument("dummy", EntityArgument.entity())
-                .suggests((ctx, builder) -> {
-                    builder.suggest("@s");
-                    PlayerList playerList = ctx.getSource().getServer().getPlayerList();
-                    playerList.getPlayers().forEach(player -> {
-                        if (player instanceof Dummy dummy) {
-                            builder.suggest(dummy.getUsername());
-                        }
-                    });
-                    return builder.buildFuture();
-                });
     }
 
     private static Dummy getDummy(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
