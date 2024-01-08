@@ -39,6 +39,7 @@ import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.level.storage.loot.predicates.LootItemCondition;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.ReadOnlyScoreInfo;
 import net.minecraft.world.scores.ScoreHolder;
@@ -84,7 +85,9 @@ public class AssertCommand {
                 .then(literal("data"))
                 .then(literal("entity")
                         .then(argument("entities", EntityArgument.entities())
-                                .executes(expect.apply(AssertCommand::assertEntity))))
+                                .executes(expect.apply(AssertCommand::assertEntity))
+                                .then(literal("inside")
+                                        .executes(expect.apply(AssertCommand::assertEntityInside)))))
                 .then(literal("predicate")
                         .then(argument("predicate", ResourceLocationArgument.id())
                                 .suggests(SUGGEST_PREDICATE)
@@ -130,13 +133,32 @@ public class AssertCommand {
     private static AssertResult assertEntity(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         EntitySelector selector = ctx.getArgument("entities", EntitySelector.class);
         String source = ((PackTestArgumentSource)selector).packtest$getSource();
-        Collection<? extends Entity> entities = selector.findEntities(ctx.getSource());
+        List<? extends Entity> entities = selector.findEntities(ctx.getSource());
         if (!entities.isEmpty()) {
             Entity firstEntity = entities.stream().findFirst().orElseThrow();
             String firstName = Objects.requireNonNull(firstEntity.getDisplayName()).getString();
-            return ok(source, firstName + (entities.size() <= 1 ? "" : " and " + (entities.size() - 1) + " more"));
+            return ok(source, firstName + (entities.size() == 1 ? "" : " and " + (entities.size() - 1) + " more"));
         }
         return err(source);
+    }
+
+    private static AssertResult assertEntityInside(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EntitySelector selector = ctx.getArgument("entities", EntitySelector.class);
+        String source = ((PackTestArgumentSource)selector).packtest$getSource();
+        GameTestHelper helper = ((PackTestSourceStack)ctx.getSource()).packtest$getHelper();
+        if (helper == null) {
+            throw ERROR_NO_HELPER.create();
+        }
+        AABB bounds = helper.getBounds().inflate(1);
+        List<? extends Entity> entities = selector.findEntities(ctx.getSource()).stream()
+                .filter(entity -> bounds.contains(entity.position()))
+                .toList();
+        if (!entities.isEmpty()) {
+            Entity firstEntity = entities.stream().findFirst().orElseThrow();
+            String firstName = Objects.requireNonNull(firstEntity.getDisplayName()).getString();
+            return ok(source + " inside test", firstName + (entities.size() == 1 ? "" : " and " + (entities.size() - 1) + " more"));
+        }
+        return err(source + " inside test");
     }
 
     private static AssertResult assertPredicate(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
