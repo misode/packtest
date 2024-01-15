@@ -1,22 +1,21 @@
 package io.github.misode.packtest;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.misode.packtest.dummy.Dummy;
-import net.minecraft.commands.*;
+import net.minecraft.commands.CommandResultCallback;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.FunctionInstantiationException;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.commands.functions.InstantiatedFunction;
 import net.minecraft.gametest.framework.*;
-import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
@@ -52,37 +51,14 @@ public class PackTestFunction {
             }
         }
 
-        CommandSourceStack sourceStack = new CommandSourceStack(
-                CommandSource.NULL, Vec3.ZERO, Vec2.ZERO, null, 2, "", CommonComponents.EMPTY, null, null
-        );
-        try {
-            CommandFunction.fromLines(id, dispatcher, sourceStack, lines);
-        } catch (IllegalArgumentException e) {
-            return new PackTestFunction(id, directives, List.of((sequence, source) -> {
-                throw new GameTestAssertException(e.getMessage());
-            }));
-        }
-
         List<Step> steps = new ArrayList<>();
-        List<String> currentLines = new ArrayList<>();
-        for (String line : lines) {
-            String sLine = line.stripLeading();
-            if (sLine.startsWith("await ")) {
-                if (!currentLines.isEmpty()) {
-                    steps.add(new ExecuteStep(currentLines, dispatcher));
-                    currentLines = new ArrayList<>();
-                }
-                if (sLine.startsWith("await delay ")) {
-                    steps.add(new IdleStep(line.substring("await delay ".length())));
-                } else {
-                    steps.add(new AwaitStep(line, dispatcher));
-                }
-            } else {
-                currentLines.add(line);
+        for (int i = 0; i < lines.size(); i += 1) {
+            String line = lines.get(i).stripLeading();
+            if (line.startsWith("await delay ")) {
+                steps.add(new IdleStep(line.substring("await delay ".length()), i + 1));
+            } else if (!line.startsWith("#") && !line.isEmpty()) {
+                steps.add(new CommandStep(lines.get(i), i + 1, dispatcher));
             }
-        }
-        if (!currentLines.isEmpty()) {
-            steps.add(new ExecuteStep(currentLines, dispatcher));
         }
 
         return new PackTestFunction(id, directives, steps);
@@ -189,47 +165,49 @@ public class PackTestFunction {
         void register(GameTestSequence sequence, CommandSourceStack source);
     }
 
-    public record ExecuteStep(List<String> lines, CommandDispatcher<CommandSourceStack> dispatcher) implements Step {
+    public record CommandStep(String line, int lineNumber, CommandDispatcher<CommandSourceStack> dispatcher) implements Step {
         @Override
         public void register(GameTestSequence sequence, CommandSourceStack source) {
             try {
                 ResourceLocation id = new ResourceLocation("packtest", "internal");
-                CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, this.dispatcher, source, this.lines);
+                CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, this.dispatcher, source, List.of(this.line));
                 InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, this.dispatcher, source);
-                sequence.thenExecute(() -> Commands.executeCommandInContext(
-                        source,
-                        e -> ExecutionContext.queueInitialFunctionCall(e, instantiated, source, CommandResultCallback.EMPTY)
-                ));
+                Runnable runCommands = () -> {
+                    try {
+                        Commands.executeCommandInContext(
+                                source,
+                                e -> ExecutionContext.queueInitialFunctionCall(e, instantiated, source, CommandResultCallback.EMPTY)
+                        );
+                    } catch (GameTestAssertException e) {
+                        throw new LineNumberException(e.getMessage(), lineNumber);
+                    }
+                };
+                if (line.stripLeading().startsWith("await ")) {
+                    sequence.thenWaitUntil(runCommands);
+                } else {
+                    sequence.thenExecute(runCommands);
+                }
             } catch (IllegalArgumentException e) {
-                throw new GameTestAssertException(e.getMessage());
+                String message = e.getMessage().replaceFirst("^Whilst parsing command on line \\d+: ", "");
+                if (message.equals("Line continuation at end of file")) {
+                    message = "Line continuation is not supported in tests";
+                }
+                throw new LineNumberException("Whilst parsing command: " + message, lineNumber);
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
-                throw new GameTestAssertException("Failed to instantiate test function: " + message);
+                throw new LineNumberException("Whilst instantiating command: " + message, lineNumber);
             }
         }
     }
 
-    public record AwaitStep(String line, CommandDispatcher<CommandSourceStack> dispatcher) implements Step {
-        @Override
-        public void register(GameTestSequence sequence, CommandSourceStack source) {
-            ParseResults<CommandSourceStack> parseResults = dispatcher.parse(line, source);
-            ContextChain<CommandSourceStack> chain = ContextChain.tryFlatten(parseResults.getContext().build(line))
-                    .orElseThrow(() -> new GameTestAssertException("Unknown or incomplete command"));
-            sequence.thenWaitUntil(() -> Commands.executeCommandInContext(
-                    source,
-                    e -> ExecutionContext.queueInitialCommandExecution(e, line, chain, source, CommandResultCallback.EMPTY)
-            ));
-        }
-    }
-
-    public record IdleStep(String argument) implements Step {
+    public record IdleStep(String argument, int lineNumber) implements Step {
         @Override
         public void register(GameTestSequence sequence, CommandSourceStack source) {
             try {
                 int ticks = TimeArgument.time().parse(new StringReader(argument));
-                sequence.thenIdle(ticks);
+                ((PackTestSequence)sequence).packtest$thenIdle(ticks, lineNumber, argument);
             } catch (CommandSyntaxException e) {
-                throw new GameTestAssertException(e.getMessage());
+                throw new LineNumberException("Whilst parsing command: " + e.getMessage(), lineNumber);
             }
         }
     }

@@ -26,8 +26,14 @@ public abstract class GameTestInfoMixin implements PackTestInfo {
     @Shadow
     public abstract ServerLevel getLevel();
 
+    @Shadow private long tickCount;
     @Unique
     private ChatListener chatListener;
+
+    @Override
+    public long packtest$getTick() {
+        return this.tickCount;
+    }
 
     @Override
     public void packtest$setChatListener(ChatListener chatListener) {

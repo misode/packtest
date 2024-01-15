@@ -21,6 +21,7 @@
 	"mixins": [
 		"packtest.mixins.json"
 	],
+	"accessWidener": "packtest.accesswidener",
 	"depends": {
 		"fabricloader": ">=0.15.0",
 		"minecraft": "~1.20.4",

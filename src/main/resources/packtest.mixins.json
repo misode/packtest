@@ -17,11 +17,13 @@
     "GameTestHelperMixin",
     "GameTestInfoMixin",
     "GameTestRegistryMixin",
+    "GameTestSequenceMixin",
     "GameTestServerMixin",
     "LogTestReporterMixin",
     "MinecraftServerMixin",
     "PlayerListMixin",
     "ReloadableServerResourcesMixin",
+    "ReportGameListenerMixin",
     "ServerPlayerMixin",
     "StructureUtilsMixin",
     "TestCommandMixin"

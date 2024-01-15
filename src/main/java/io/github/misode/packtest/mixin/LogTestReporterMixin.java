@@ -1,5 +1,6 @@
 package io.github.misode.packtest.mixin;
 
+import io.github.misode.packtest.LineNumberException;
 import io.github.misode.packtest.PackTest;
 import net.minecraft.Util;
 import net.minecraft.gametest.framework.GameTestInfo;
@@ -14,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Remove coordinates from failing test logs when auto is enabled.
+ * Remove coordinates and add line numbers from failing test logs when auto is enabled.
  * Apply ascii color codes to failure messages.
  */
 @Mixin(LogTestReporter.class)
@@ -29,10 +30,13 @@ public class LogTestReporterMixin {
     private void onTestFailed(GameTestInfo info, CallbackInfo ci) {
         if (PackTest.isAutoEnabled()) {
             boolean color = PackTest.isAutoColoringEnabled();
+            String lineNumber = info.getError() instanceof LineNumberException err
+                    ? " on line " + err.getLineNumber()
+                    : "";
             if (info.isRequired()) {
-                LOGGER.error((color ? "\u001b[0;31m" : "") + "{} failed! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), Util.describeError(info.getError()));
+                LOGGER.error((color ? "\u001b[0;31m" : "") + "{} failed{}! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), lineNumber, Util.describeError(info.getError()));
             } else {
-                LOGGER.warn((color ? "\u001b[0;33m" : "") + "(optional) {} failed! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), Util.describeError(info.getError()));
+                LOGGER.warn((color ? "\u001b[0;33m" : "") + "(optional) {} failed{}! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), lineNumber, Util.describeError(info.getError()));
             }
             ci.cancel();
         }
