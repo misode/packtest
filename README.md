@@ -46,6 +46,8 @@ Tests can be run in-game using the `test` command.
 ### Auto test server
 Tests can also be run automatically, for instance in a CI environment. When `-Dpacktest.auto` is set, the game test server will start automatically with the loaded tests. The process will exit when all tests have finished with the exist code set to the number of failed tests. 
 
+Setting `-Dpacktest.auto.annotations` will emit GitHub annotations for all test failures and resource load errors.
+
 The following example can be adapted into a GitHub action workflow.
 ```yaml
 on: [push, pull_request]
@@ -54,7 +56,7 @@ env:
   # Make sure to update these links!
   TEST_FABRIC_SERVER: https://meta.fabricmc.net/v2/versions/loader/1.20.4/0.15.3/0.11.2/server/jar
   TEST_FABRIC_API: https://cdn.modrinth.com/data/P7dR8mSH/versions/JMCwDuki/fabric-api-0.92.0%2B1.20.4.jar
-  TEST_PACKTEST: https://cdn.modrinth.com/data/XsKUhp45/versions/Gq3rUEy6/packtest-1.3-mc1.20.4.jar
+  TEST_PACKTEST: https://cdn.modrinth.com/data/XsKUhp45/versions/18smpIeE/packtest-1.6-mc1.20.4.jar
 
 jobs:
   test:
@@ -75,7 +77,7 @@ jobs:
           cp -r datapack world/datapacks/datapack
       - name: Run tests
         run: |
-          java -Xmx2G -Dpacktest.auto -jar server.jar nogui
+          java -Xmx2G -Dpacktest.auto -Dpacktest.auto.annotations -jar server.jar nogui
 ```
 
 ## Commands
