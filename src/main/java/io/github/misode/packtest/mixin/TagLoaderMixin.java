@@ -25,12 +25,12 @@ public class TagLoaderMixin {
     @Final
     private static Logger LOGGER;
 
-    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;getOrThrow(ZLjava/util/function/Consumer;)Ljava/lang/Object;"))
+    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lcom/mojang/serialization/DataResult;getOrThrow(ZLjava/util/function/Consumer;)Ljava/lang/Object;", remap = false))
     private static Object removeDuplicateError(DataResult<Object> dataResult, boolean allowPartial, Consumer<String> onError, Operation<TagFile> original) {
         return dataResult.getOrThrow(allowPartial, (error) -> {});
     }
 
-    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V"))
+    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
     private static void catchTagError(Logger logger, String message, Object[] args, Operation<Void> original) {
         String error = ((Exception)args[3]).getMessage().replaceFirst("^[A-Za-z0-9.]+Exception: ", "");
         String type = ((ResourceLocation)args[1]).getPath().replaceFirst("tags/", "").replaceFirst("s?/.*", "");
@@ -38,7 +38,7 @@ public class TagLoaderMixin {
         LOGGER.error("Couldn't read {} tag {} - {}", type, args[0], error);
     }
 
-    @WrapOperation(method = "method_33175", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V"))
+    @WrapOperation(method = "method_33175", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private static void catchTagReferenceError(Logger logger, String message, Object id, Object refs, Operation<Void> original) {
         LoadDiagnostics.error("tag", ((ResourceLocation)id).toString(), "Missing references: " + refs);
         original.call(logger, message, id, refs);

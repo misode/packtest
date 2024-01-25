@@ -45,7 +45,7 @@ public class GameTestServerMixin {
         return Lists.newArrayList(GameTestRunner.groupTestsIntoBatches(testFunctions));
     }
 
-    @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;)V", ordinal = 0, shift = At.Shift.AFTER))
+    @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;)V", remap = false, ordinal = 0, shift = At.Shift.AFTER))
     private void tickServer(BooleanSupplier booleanSupplier, CallbackInfo ci) {
         List<LoadDiagnostics.Diagnostic> errors = LoadDiagnostics.loadErrors();
         if (!errors.isEmpty()) {
@@ -54,7 +54,7 @@ public class GameTestServerMixin {
         }
     }
 
-    @WrapOperation(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;)V", ordinal = 2))
+    @WrapOperation(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;)V", remap = false, ordinal = 2))
     private void checkNoTests(Logger logger, String message, Object arg, Operation<Void> original) {
         if (Objects.requireNonNull(this.testTracker).getTotalCount() == 0) {
             LOGGER.info("No tests were loaded :(");

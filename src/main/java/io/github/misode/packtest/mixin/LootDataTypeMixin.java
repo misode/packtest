@@ -21,7 +21,7 @@ public class LootDataTypeMixin {
     @Final
     private static Logger LOGGER;
 
-    @WrapOperation(method = "method_53267", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V"))
+    @WrapOperation(method = "method_53267", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
     private void deserialize(Logger logger, String message, Object[] args, Operation<Void> original) {
         String type = ((String)args[0]).substring(0, ((String)args[0]).length() - 1);
         LoadDiagnostics.error(type, ((ResourceLocation)args[1]).toString(), (String)args[2]);

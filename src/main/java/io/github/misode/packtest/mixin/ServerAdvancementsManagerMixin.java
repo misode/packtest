@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.At;
  */
 @Mixin(ServerAdvancementManager.class)
 public class ServerAdvancementsManagerMixin {
-    @WrapOperation(method = "method_20723", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V"))
+    @WrapOperation(method = "method_20723", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private void apply(Logger logger, String message, Object id, Object error, Operation<Void> original) {
         LoadDiagnostics.error("advancement", ((ResourceLocation)id).toString(), (String)error);
         original.call(logger, message, id, error);

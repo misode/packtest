@@ -20,7 +20,7 @@ public class RecipeManagerMixin {
     @Final
     private static Logger LOGGER;
 
-    @WrapOperation(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V"))
+    @WrapOperation(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private void apply(Logger logger, String message, Object id, Object e, Operation<Void> original) {
         String error = ((Exception)e).getMessage();
         LoadDiagnostics.error("recipe", ((ResourceLocation)id).toString(), error);
