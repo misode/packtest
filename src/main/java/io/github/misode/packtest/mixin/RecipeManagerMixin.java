@@ -3,6 +3,7 @@ package io.github.misode.packtest.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import io.github.misode.packtest.LoadDiagnostics;
+import io.github.misode.packtest.PackTest;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.RecipeManager;
 import org.slf4j.Logger;
@@ -24,6 +25,6 @@ public class RecipeManagerMixin {
     private void apply(Logger logger, String message, Object id, Object e, Operation<Void> original) {
         String error = ((Exception)e).getMessage();
         LoadDiagnostics.error("recipe", ((ResourceLocation)id).toString(), error);
-        LOGGER.error(message + " - {}", id, error);
+        LOGGER.error(PackTest.wrapError(message + " - {}"), id, error);
     }
 }

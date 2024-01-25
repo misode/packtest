@@ -20,7 +20,7 @@ public class PackTest implements ModInitializer {
 	}
 
 	public static boolean isAutoColoringEnabled() {
-		return !"false".equals(System.getProperty("packtest.auto.coloring"));
+		return isAutoEnabled() && !"false".equals(System.getProperty("packtest.auto.coloring"));
 	}
 
 	@Override
@@ -36,5 +36,19 @@ public class PackTest implements ModInitializer {
 
 	public static void runHeadlessServer(LevelStorageSource.LevelStorageAccess storage, PackRepository packRepository) {
 		GameTestServer.spin(thread -> GameTestServer.create(thread, storage, packRepository, List.of(), BlockPos.ZERO));
+	}
+
+	public static String wrapError(String message) {
+		if (isAutoColoringEnabled()) {
+			return "\u001b[0;31m" + message + "\u001b[0m";
+		}
+		return message;
+	}
+
+	public static String wrapWarning(String message) {
+		if (isAutoColoringEnabled()) {
+			return "\u001b[0;33m" + message + "\u001b[0m";
+		}
+		return message;
 	}
 }

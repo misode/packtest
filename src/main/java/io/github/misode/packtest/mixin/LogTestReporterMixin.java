@@ -29,14 +29,13 @@ public class LogTestReporterMixin {
     @Inject(method = "onTestFailed", at = @At(value = "HEAD"), cancellable = true)
     private void onTestFailed(GameTestInfo info, CallbackInfo ci) {
         if (PackTest.isAutoEnabled()) {
-            boolean color = PackTest.isAutoColoringEnabled();
             String lineNumber = info.getError() instanceof LineNumberException err
                     ? " on line " + err.getLineNumber()
                     : "";
             if (info.isRequired()) {
-                LOGGER.error((color ? "\u001b[0;31m" : "") + "{} failed{}! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), lineNumber, Util.describeError(info.getError()));
+                LOGGER.error(PackTest.wrapError("{} failed{}! {}"), info.getTestName(), lineNumber, Util.describeError(info.getError()));
             } else {
-                LOGGER.warn((color ? "\u001b[0;33m" : "") + "(optional) {} failed{}! {}" + (color ? "\u001b[0m" : ""), info.getTestName(), lineNumber, Util.describeError(info.getError()));
+                LOGGER.warn(PackTest.wrapWarning("(optional) {} failed{}! {}"), info.getTestName(), lineNumber, Util.describeError(info.getError()));
             }
             ci.cancel();
         }
