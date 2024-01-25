@@ -20,12 +20,17 @@
     "GameTestSequenceMixin",
     "GameTestServerMixin",
     "LogTestReporterMixin",
+    "LootDataTypeMixin",
     "MinecraftServerMixin",
     "PlayerListMixin",
+    "RecipeManagerMixin",
     "ReloadableServerResourcesMixin",
     "ReportGameListenerMixin",
+    "ServerAdvancementsManagerMixin",
+    "ServerFunctionLibraryMixin",
     "ServerPlayerMixin",
     "StructureUtilsMixin",
+    "TagLoaderMixin",
     "TestCommandMixin"
   ],
   "server": [
