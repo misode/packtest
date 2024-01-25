@@ -1,6 +1,5 @@
 package io.github.misode.packtest.mixin.server;
 
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import io.github.misode.packtest.PackTest;
 import net.minecraft.server.Main;
@@ -12,16 +11,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Start the test server instead of the normal dedicated server.
- * Automatically agree to the EULA when auto is enabled. Based on Fabric API.
+ * Start the test server instead of the normal dedicated server. Based on Fabric API.
  */
 @Mixin(Main.class)
 public class MainMixin {
-    @ModifyExpressionValue(method = "main", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/Eula;hasAgreedToEULA()Z"))
-    private static boolean hasAgreedToEULA(boolean original) {
-        return PackTest.isAutoEnabled() || original;
-    }
-
     @Inject(method = "main", cancellable = true, at = @At(value = "INVOKE_ASSIGN", target = "Lnet/minecraft/server/packs/repository/ServerPacksSource;createPackRepository(Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;)Lnet/minecraft/server/packs/repository/PackRepository;"))
     private static void mainStartServer(String[] args, CallbackInfo ci, @Local LevelStorageSource.LevelStorageAccess storage, @Local PackRepository packRepository) {
         if (PackTest.isAutoEnabled()) {

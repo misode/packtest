@@ -34,7 +34,9 @@
     "TestCommandMixin"
   ],
   "server": [
-    "server.MainMixin"
+    "server.EulaMixin",
+    "server.MainMixin",
+    "server.SettingsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
