@@ -32,10 +32,14 @@ public class LogTestReporterMixin {
             String lineNumber = info.getError() instanceof LineNumberException err
                     ? " on line " + err.getLineNumber()
                     : "";
+            String annotation = "";
+            if (PackTest.isAnnotationsEnabled() && info.isRequired()) {
+                annotation = "\n::error title=Test " + info.getTestName() + " failed" + lineNumber + "!::" + Util.describeError(info.getError());
+            }
             if (info.isRequired()) {
-                LOGGER.error(PackTest.wrapError("{} failed{}! {}"), info.getTestName(), lineNumber, Util.describeError(info.getError()));
+                LOGGER.error(PackTest.wrapError("{} failed{}! {}") + annotation, info.getTestName(), lineNumber, Util.describeError(info.getError()));
             } else {
-                LOGGER.warn(PackTest.wrapWarning("(optional) {} failed{}! {}"), info.getTestName(), lineNumber, Util.describeError(info.getError()));
+                LOGGER.warn(PackTest.wrapWarning("(optional) {} failed{}! {}") + annotation, info.getTestName(), lineNumber, Util.describeError(info.getError()));
             }
             ci.cancel();
         }

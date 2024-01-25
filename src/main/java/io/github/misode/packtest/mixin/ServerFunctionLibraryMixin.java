@@ -3,7 +3,6 @@ package io.github.misode.packtest.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import io.github.misode.packtest.LoadDiagnostics;
-import io.github.misode.packtest.PackTest;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.ServerFunctionLibrary;
 import org.slf4j.Logger;
@@ -24,7 +23,6 @@ public class ServerFunctionLibraryMixin {
     @WrapOperation(method = "method_29457", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private static void catchFunctionError(Logger logger, String message, Object id, Object e, Operation<Void> original) {
         String error = ((Exception)e).getMessage().replaceFirst("^[A-Za-z0-9.]+Exception: ", "");
-        LoadDiagnostics.error("function", ((ResourceLocation)id).toString(), error);
-        LOGGER.error(PackTest.wrapError(message + " - {}"), id, error);
+        LoadDiagnostics.error(LOGGER, "function", ((ResourceLocation)id).toString(), error);
     }
 }

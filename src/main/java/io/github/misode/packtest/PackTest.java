@@ -23,6 +23,10 @@ public class PackTest implements ModInitializer {
 		return isAutoEnabled() && !"false".equals(System.getProperty("packtest.auto.coloring"));
 	}
 
+	public static boolean isAnnotationsEnabled() {
+		return isAutoEnabled() && System.getProperty("packtest.auto.annotations") != null;
+	}
+
 	@Override
 	public void onInitialize() {
 		CommandRegistrationCallback.EVENT.register((dispatcher, buildContext, environment) -> {
