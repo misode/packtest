@@ -29,6 +29,7 @@
     "ServerAdvancementsManagerMixin",
     "ServerFunctionLibraryMixin",
     "ServerPlayerMixin",
+    "SimpleJsonResourceReloadListenerMixin",
     "StructureUtilsMixin",
     "TagLoaderMixin",
     "TestCommandMixin"
