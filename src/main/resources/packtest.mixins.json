@@ -13,7 +13,7 @@
     "EntitySelectorMixin",
     "ForceLoadCommandMixin",
     "GameTestBatchMixin",
-    "GameTestBatchRunner1Mixin",
+    "GameTestRunner1Mixin",
     "GameTestHelperMixin",
     "GameTestInfoMixin",
     "GameTestRegistryMixin",

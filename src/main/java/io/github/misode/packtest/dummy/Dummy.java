@@ -65,7 +65,7 @@ public class Dummy extends ServerPlayer {
         server.getPlayerList().placeNewPlayer(
                 new DummyClientConnection(PacketFlow.SERVERBOUND),
                 dummy,
-                new CommonListenerCookie(profile, 0, dummy.clientInformation()));
+                new CommonListenerCookie(profile, 0, dummy.clientInformation(), false));
         dummy.teleportTo(level, originalSpawn.x, originalSpawn.y, originalSpawn.z, 0, 0);
         dummy.setHealth(20);
         dummy.unsetRemoved();

@@ -124,8 +124,10 @@ public class PackTestFunction {
                 this.getTimeout(),
                 0L,
                 this.isRequired(),
+                false,
                 1,
                 1,
+                false,
                 createTestBody(permissionLevel));
     }
 
@@ -171,7 +173,7 @@ public class PackTestFunction {
             try {
                 ResourceLocation id = new ResourceLocation("packtest", "internal");
                 CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, this.dispatcher, source, List.of(this.line));
-                InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, this.dispatcher, source);
+                InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, this.dispatcher);
                 Runnable runCommands = () -> {
                     try {
                         Commands.executeCommandInContext(

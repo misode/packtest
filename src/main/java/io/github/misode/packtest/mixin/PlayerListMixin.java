@@ -21,6 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Fixes starting position of dummies when they load in.
@@ -36,10 +37,10 @@ public class PlayerListMixin {
         }
     }
 
-    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/storage/PlayerDataStorage;load(Lnet/minecraft/world/entity/player/Player;)Lnet/minecraft/nbt/CompoundTag;"))
-    private CompoundTag skipLoadDummy(PlayerDataStorage playerIo, Player player, Operation<CompoundTag> original) {
+    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/storage/PlayerDataStorage;load(Lnet/minecraft/world/entity/player/Player;)Ljava/util/Optional;"))
+    private Optional<CompoundTag> skipLoadDummy(PlayerDataStorage playerIo, Player player, Operation<Optional<CompoundTag>> original) {
         if (player instanceof Dummy) {
-            return null;
+            return Optional.empty();
         } else {
             return original.call(playerIo, player);
         }

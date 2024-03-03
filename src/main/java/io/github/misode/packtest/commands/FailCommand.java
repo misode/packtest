@@ -5,6 +5,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.misode.packtest.PackTestSourceStack;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.ComponentArgument;
 import net.minecraft.commands.execution.ChainModifiers;
@@ -19,10 +20,10 @@ import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
 public class FailCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         dispatcher.register(literal("fail")
                 .requires(ctx -> ctx.hasPermission(2))
-                .then(argument("message", ComponentArgument.textComponent())
+                .then(argument("message", ComponentArgument.textComponent(buildContext))
                         .executes(new FailCommand.FailCustomExecutor()))
         );
     }

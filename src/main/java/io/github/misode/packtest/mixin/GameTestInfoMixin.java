@@ -17,7 +17,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Adds chat listener field and accessors. Removes the listener when finishing.
- * Prevents crash when test has already started.
  * Clears dummies after succeeding.
  */
 @Mixin(GameTestInfo.class)
@@ -43,11 +42,6 @@ public abstract class GameTestInfoMixin implements PackTestInfo {
     @Override
     public ChatListener packtest$getChatListener() {
         return this.chatListener;
-    }
-
-    @Inject(method = "startTest", cancellable = true, at = @At(value = "INVOKE", target = "Ljava/lang/IllegalStateException;<init>(Ljava/lang/String;)V"))
-    private void startTest(CallbackInfo ci) {
-        ci.cancel();
     }
 
     @Inject(method = "finish", at = @At("HEAD"))

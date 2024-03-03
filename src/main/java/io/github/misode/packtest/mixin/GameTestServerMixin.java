@@ -40,12 +40,12 @@ public class GameTestServerMixin {
     }
 
     @ModifyExpressionValue(method = "<init>", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Lists;newArrayList(Ljava/lang/Iterable;)Ljava/util/ArrayList;", remap = false))
-    private ArrayList<GameTestBatch> modifyBatches(ArrayList<GameTestBatch> batches) {
+    private ArrayList<TestFunction> modifyTests(ArrayList<TestFunction> original) {
         Collection<TestFunction> testFunctions = GameTestRegistry.getAllTestFunctions();
-        return Lists.newArrayList(GameTestRunner.groupTestsIntoBatches(testFunctions));
+        return Lists.newArrayList(testFunctions);
     }
 
-    @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;)V", remap = false, ordinal = 0, shift = At.Shift.AFTER))
+    @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false, shift = At.Shift.AFTER))
     private void tickServer(BooleanSupplier booleanSupplier, CallbackInfo ci) {
         List<LoadDiagnostics.Diagnostic> errors = LoadDiagnostics.loadErrors();
         if (!errors.isEmpty()) {
