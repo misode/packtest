@@ -99,6 +99,10 @@ public class PackTestFunction {
         return Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
     }
 
+    private boolean needsSkyAccess() {
+        return Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
+    }
+
     public void registerBatchHook(int permissionLevel, Map<String, Consumer<ServerLevel>> map, String type) {
         String command = this.directives.get(type + "batch");
         if (command == null) {
@@ -127,7 +131,7 @@ public class PackTestFunction {
                 false,
                 1,
                 1,
-                false,
+                this.needsSkyAccess(),
                 createTestBody(permissionLevel));
     }
 
