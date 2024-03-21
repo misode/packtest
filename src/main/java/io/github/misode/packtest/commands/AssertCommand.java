@@ -7,9 +7,11 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.Dynamic3CommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.*;
+import it.unimi.dsi.fastutil.ints.IntList;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
@@ -17,6 +19,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.*;
 import net.minecraft.commands.arguments.blocks.BlockPredicateArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import net.minecraft.commands.arguments.item.ItemPredicateArgument;
 import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.commands.execution.ChainModifiers;
 import net.minecraft.commands.execution.CustomCommandExecutor;
@@ -32,7 +35,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.ReloadableServerRegistries;
 import net.minecraft.server.commands.data.DataCommands;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.inventory.SlotRange;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -60,6 +67,9 @@ import static net.minecraft.commands.Commands.literal;
 public class AssertCommand {
     private static final SimpleCommandExceptionType ERROR_NO_HELPER = new SimpleCommandExceptionType(
             Component.literal("Not inside a test")
+    );
+    private static final Dynamic3CommandExceptionType ERROR_SOURCE_NOT_A_CONTAINER = new Dynamic3CommandExceptionType(
+            (x, y, z) -> Component.translatableEscape("commands.item.source.not_a_container", x, y, z)
     );
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_PREDICATE = (ctx, suggestions) -> {
         ReloadableServerRegistries.Holder registries = ctx.getSource().getServer().reloadableRegistries();
@@ -92,6 +102,17 @@ public class AssertCommand {
                         .then(argument("predicate", ResourceOrIdArgument.lootPredicate(buildContext))
                                 .suggests(SUGGEST_PREDICATE)
                                 .executes(expect.apply(AssertCommand::assertPredicate))))
+                .then(literal("items")
+                        .then(literal("entity")
+                                .then(argument("entities", EntityArgument.entities())
+                                        .then(argument("slots", SlotsArgument.slots())
+                                                .then(argument("item_predicate", ItemPredicateArgument.itemPredicate(buildContext))
+                                                        .executes(expect.apply(AssertCommand::assertItemsEntity))))))
+                        .then(literal("block")
+                                .then(argument("pos", BlockPosArgument.blockPos())
+                                        .then(argument("slots", SlotsArgument.slots())
+                                                .then(argument("item_predicate", ItemPredicateArgument.itemPredicate(buildContext))
+                                                        .executes(expect.apply(AssertCommand::assertItemsBlock)))))))
                 .then(literal("score")
                         .then(argument("target", ScoreHolderArgument.scoreHolder())
                                 .suggests(ScoreHolderArgument.SUGGEST_SCORE_HOLDERS)
@@ -175,6 +196,59 @@ public class AssertCommand {
             return ok(expected);
         }
         return err(expected);
+    }
+
+    private static AssertResult assertItemsEntity(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        EntitySelector selector = ctx.getArgument("entities", EntitySelector.class);
+        String selectorSource = ((PackTestArgumentSource)selector).packtest$getSource();
+        List<? extends Entity> entities = selector.findEntities(ctx.getSource());
+        SlotRange slotRange = SlotsArgument.getSlots(ctx, "slots");
+        ItemPredicateArgument.Result itemPredicate = ItemPredicateArgument.getItemPredicate(ctx, "item_predicate");
+        String itemPredicateSource = ((PackTestItemPredicate)itemPredicate).source();
+        int count = 0;
+        for(Entity entity : entities) {
+            IntList slots = slotRange.slots();
+            for(int i = 0; i < slots.size(); ++i) {
+                ItemStack itemStack = entity.getSlot(slots.getInt(i)).get();
+                if (itemPredicate.test(itemStack)) {
+                    count += itemStack.getCount();
+                }
+            }
+        }
+        String expected = selectorSource + " to have items " + itemPredicateSource;
+        if (count > 0) {
+            return ok(expected);
+        }
+        return err(expected);
+    }
+
+    private static AssertResult assertItemsBlock(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
+        SlotRange slotRange = SlotsArgument.getSlots(ctx, "slots");
+        ItemPredicateArgument.Result itemPredicate = ItemPredicateArgument.getItemPredicate(ctx, "item_predicate");
+        String itemPredicateSource = ((PackTestItemPredicate)itemPredicate).source();
+        BlockEntity blockEntity = ctx.getSource().getLevel().getBlockEntity(pos);
+        if (blockEntity instanceof Container container) {
+            int count = 0;
+            int lvt6 = container.getContainerSize();
+            IntList slots = slotRange.slots();
+            for(int i = 0; i < slots.size(); ++i) {
+                int slot = slots.getInt(i);
+                if (slot >= 0 && slot < lvt6) {
+                    ItemStack itemStack = container.getItem(slot);
+                    if (itemPredicate.test(itemStack)) {
+                        count += itemStack.getCount();
+                    }
+                }
+            }
+            String expected = "block to have items " + itemPredicateSource;
+            if (count > 0) {
+                return ok(expected);
+            }
+            return err(expected);
+        } else {
+            throw ERROR_SOURCE_NOT_A_CONTAINER.create(pos.getX(), pos.getY(), pos.getZ());
+        }
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> addScoreCheck(String op, BiPredicate<Integer, Integer> predicate, Function<AssertPredicate, Command<CommandSourceStack>> expect) {
