@@ -23,18 +23,18 @@ import net.minecraft.commands.execution.CustomCommandExecutor;
 import net.minecraft.commands.execution.ExecutionControl;
 import net.minecraft.commands.execution.Frame;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.ReloadableServerRegistries;
 import net.minecraft.server.commands.data.DataCommands;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.state.pattern.BlockInWorld;
 import net.minecraft.world.level.storage.loot.LootContext;
-import net.minecraft.world.level.storage.loot.LootDataManager;
-import net.minecraft.world.level.storage.loot.LootDataType;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
@@ -62,8 +62,8 @@ public class AssertCommand {
             Component.literal("Not inside a test")
     );
     private static final SuggestionProvider<CommandSourceStack> SUGGEST_PREDICATE = (ctx, suggestions) -> {
-        LootDataManager lootData = ctx.getSource().getServer().getLootData();
-        return SharedSuggestionProvider.suggestResource(lootData.getKeys(LootDataType.PREDICATE), suggestions);
+        ReloadableServerRegistries.Holder registries = ctx.getSource().getServer().reloadableRegistries();
+        return SharedSuggestionProvider.suggestResource(registries.getKeys(Registries.PREDICATE), suggestions);
     };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
@@ -89,7 +89,7 @@ public class AssertCommand {
                                 .then(literal("inside")
                                         .executes(expect.apply(AssertCommand::assertEntityInside)))))
                 .then(literal("predicate")
-                        .then(argument("predicate", ResourceLocationArgument.id())
+                        .then(argument("predicate", ResourceOrIdArgument.lootPredicate(buildContext))
                                 .suggests(SUGGEST_PREDICATE)
                                 .executes(expect.apply(AssertCommand::assertPredicate))))
                 .then(literal("score")
@@ -161,18 +161,17 @@ public class AssertCommand {
         return err(source + " inside test");
     }
 
-    private static AssertResult assertPredicate(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
-        ResourceLocation id = ctx.getArgument("predicate", ResourceLocation.class);
-        LootItemCondition predicate = ResourceLocationArgument.getPredicate(ctx, "predicate");
+    private static AssertResult assertPredicate(CommandContext<CommandSourceStack> ctx) {
+        Holder<LootItemCondition> predicate = ResourceOrIdArgument.getLootPredicate(ctx, "predicate");
         CommandSourceStack sourceStack = ctx.getSource();
         LootParams lootParams = new LootParams.Builder(sourceStack.getLevel())
                 .withParameter(LootContextParams.ORIGIN, sourceStack.getPosition())
                 .withOptionalParameter(LootContextParams.THIS_ENTITY, sourceStack.getEntity())
                 .create(LootContextParamSets.COMMAND);
         LootContext lootContext = new LootContext.Builder(lootParams).create(Optional.empty());
-        lootContext.pushVisitedElement(LootContext.createVisitedEntry(predicate));
-        String expected = "predicate " + id + " to pass";
-        if (predicate.test(lootContext)) {
+        lootContext.pushVisitedElement(LootContext.createVisitedEntry(predicate.value()));
+        String expected = "predicate " + predicate.getRegisteredName() + " to pass";
+        if (predicate.value().test(lootContext)) {
             return ok(expected);
         }
         return err(expected);
