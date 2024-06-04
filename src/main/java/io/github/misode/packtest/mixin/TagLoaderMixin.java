@@ -21,7 +21,7 @@ public class TagLoaderMixin {
     private static Logger LOGGER;
 
     @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
-    private static void catchTagError(Logger logger, String message, Object[] args, Operation<Void> original) {
+    private void catchTagError(Logger logger, String message, Object[] args, Operation<Void> original) {
         String error = ((Exception)args[3]).getMessage().replaceFirst("^[A-Za-z0-9.]+Exception: ", "");
         String type = ((ResourceLocation)args[1]).getPath().replaceFirst("tags/", "").replaceFirst("s?/.*", "");
         LoadDiagnostics.error(LOGGER, type + " tag", ((ResourceLocation)args[0]).toString(), error);

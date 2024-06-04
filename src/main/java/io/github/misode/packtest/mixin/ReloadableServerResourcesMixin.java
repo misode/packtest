@@ -34,7 +34,7 @@ public class ReloadableServerResourcesMixin {
     }
 
     @ModifyReturnValue(method = "listeners", at = @At("RETURN"))
-    private static List<PreparableReloadListener> listeners(List<PreparableReloadListener> list) {
+    private List<PreparableReloadListener> listeners(List<PreparableReloadListener> list) {
         List<PreparableReloadListener> result = new ArrayList<>(list);
         result.add(PackTestLibrary.INSTANCE);
         return result;

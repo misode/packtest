@@ -175,7 +175,7 @@ public class PackTestFunction {
         @Override
         public void register(GameTestSequence sequence, CommandSourceStack source) {
             try {
-                ResourceLocation id = new ResourceLocation("packtest", "internal");
+                ResourceLocation id = ResourceLocation.fromNamespaceAndPath("packtest", "internal");
                 CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, this.dispatcher, source, List.of(this.line));
                 InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, this.dispatcher);
                 Runnable runCommands = () -> {

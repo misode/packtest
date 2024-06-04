@@ -3,6 +3,7 @@ package io.github.misode.packtest.dummy;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
@@ -18,6 +19,7 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameRules;
@@ -87,11 +89,11 @@ public class Dummy extends ServerPlayer {
 
     public void leave(Component reason) {
         server.getPlayerList().remove(this);
-        this.connection.onDisconnect(reason);
+        this.connection.onDisconnect(new DisconnectionDetails(reason));
     }
 
     public void respawn() {
-        server.getPlayerList().respawn(this, false);
+        server.getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
     }
 
     @Override
