@@ -27,7 +27,7 @@ import java.util.function.Consumer;
 
 public class PackTestLibrary implements PreparableReloadListener {
     public static final PackTestLibrary INSTANCE = new PackTestLibrary(2, new CommandDispatcher<>());
-    private static final FileToIdConverter LISTER = new FileToIdConverter("tests", ".mcfunction");
+    private static final FileToIdConverter LISTER = new FileToIdConverter("test", ".mcfunction");
 
     private int permissionLevel;
     private CommandDispatcher<CommandSourceStack> dispatcher;
