@@ -29,17 +29,19 @@ public class LogTestReporterMixin {
     @Inject(method = "onTestFailed", at = @At(value = "HEAD"), cancellable = true)
     private void onTestFailed(GameTestInfo info, CallbackInfo ci) {
         if (PackTest.isAutoEnabled()) {
+            String testName = info.getTestName();
             String lineNumber = info.getError() instanceof LineNumberException err
                     ? " on line " + err.getLineNumber()
                     : "";
+            String message = Util.describeError(info.getError());
             if (info.isRequired()) {
-                String annotation = "";
                 if (PackTest.isAnnotationsEnabled()) {
-                    annotation = "\n::error title=Test " + info.getTestName() + " failed" + lineNumber + "!::" + Util.describeError(info.getError());
+                    LOGGER.error(PackTest.wrapError("{} failed{}!") + "\n::error title=Test {} failed{}!::{}", testName, lineNumber, testName, lineNumber, message);
+                } else {
+                    LOGGER.error(PackTest.wrapError("{} failed{}! {}"), testName, lineNumber, message);
                 }
-                LOGGER.error(PackTest.wrapError("{} failed{}!" + (PackTest.isAnnotationsEnabled() ? "" : " {}")) + annotation, info.getTestName(), lineNumber, Util.describeError(info.getError()));
             } else {
-                LOGGER.warn(PackTest.wrapWarning("(optional) {} failed{}! {}"), info.getTestName(), lineNumber, Util.describeError(info.getError()));
+                LOGGER.warn(PackTest.wrapWarning("(optional) {} failed{}! {}"), testName, lineNumber, message);
             }
             ci.cancel();
         }
