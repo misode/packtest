@@ -15,10 +15,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(Main.class)
 public class MainMixin {
-    @Inject(method = "main", cancellable = true, at = @At(value = "INVOKE_ASSIGN", target = "Lnet/minecraft/server/packs/repository/ServerPacksSource;createPackRepository(Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;)Lnet/minecraft/server/packs/repository/PackRepository;"))
+    @Inject(method = "main", cancellable = true, at = @At(value = "INVOKE_ASSIGN", target = "Lnet/minecraft/server/packs/repository/ServerPacksSource;createPackRepository(Lnet/minecraft/world/level/storage/LevelStorageSource$LevelStorageAccess;)Lnet/minecraft/server/packs/repository/PackRepository;", shift = At.Shift.AFTER))
     private static void mainStartServer(String[] args, CallbackInfo ci, @Local LevelStorageSource.LevelStorageAccess storage, @Local PackRepository packRepository) {
+        if (PackTest.shouldGenerateCommands()) {
+            PackTest.generateCommandsReport();
+        }
         if (PackTest.isAutoEnabled()) {
             PackTest.runHeadlessServer(storage, packRepository);
+        }
+        if (PackTest.shouldGenerateCommands() || PackTest.isAutoEnabled()) {
             ci.cancel();
         }
     }

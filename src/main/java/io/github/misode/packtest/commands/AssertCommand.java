@@ -332,8 +332,8 @@ public class AssertCommand {
         List<String> matching = chatListener.filter(m -> filter.test(m) && predicate.test(m.content()));
         List<String> all = matching.isEmpty() ? chatListener.filter(filter) : matching;
         String got = all.isEmpty() ? "no messages"
-                : all.size() == 1 ? all.get(0)
-                : all.get(all.size() - 1) + " and " + (all.size() - 1) + " more";
+                : all.size() == 1 ? all.getFirst()
+                : all.getLast() + " and " + (all.size() - 1) + " more";
         return result(!matching.isEmpty(), pattern + " in chat", got);
     }
 

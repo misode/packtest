@@ -28,10 +28,10 @@ public class ArgumentTypeInfosMixin {
     @Inject(method = "bootstrap", at = @At("RETURN"))
     private static <A extends ArgumentType<?>, T extends ArgumentTypeInfo.Template<A>> void bootstrap(Registry<ArgumentTypeInfo<?, ?>> registry, CallbackInfoReturnable<ArgumentTypeInfo<A, T>> cir) {
         if (!SharedConstants.IS_RUNNING_IN_IDE) {
-            if (!registry.containsKey(new ResourceLocation("test_argument"))) {
+            if (!registry.containsKey(ResourceLocation.withDefaultNamespace("test_argument"))) {
                 register(registry, "test_argument", TestFunctionArgument.class, SingletonArgumentInfo.contextFree(TestFunctionArgument::testFunctionArgument));
             }
-            if (!registry.containsKey(new ResourceLocation("test_class"))) {
+            if (!registry.containsKey(ResourceLocation.withDefaultNamespace("test_class"))) {
                 register(registry, "test_class", TestClassNameArgument.class, SingletonArgumentInfo.contextFree(TestClassNameArgument::testClassName));
             }
         }

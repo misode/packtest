@@ -23,7 +23,7 @@ public class LootDataTypeMixin {
 
     @WrapOperation(method = "method_53267", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
     private void deserialize(Logger logger, String message, Object[] args, Operation<Void> original) {
-        String type = ((String)args[0]).replaceAll("_", " ").replaceFirst("s$", "");
+        String type = ((ResourceLocation)args[0]).getPath().replaceAll("_", " ").replaceFirst("s$", "");
         LoadDiagnostics.error(LOGGER, type, ((ResourceLocation)args[1]).toString(), (String)args[2]);
     }
 }

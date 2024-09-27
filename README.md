@@ -1,10 +1,10 @@
 # PackTest
-PackTest allows you to write game tests in a data pack. Tests are `*.mcfunction` files in a `tests` folder. They can be used to test custom data packs.
+PackTest allows you to write game tests in a data pack. Tests are `*.mcfunction` files in a `test` folder. They can be used to test custom data packs.
 
 [![modrinth](https://cdn.jsdelivr.net/npm/@intergrav/devins-badges@3/assets/cozy/available/modrinth_vector.svg)](https://modrinth.com/mod/packtest)
 
 ## Example
-**`data/example/tests/foo.mcfunction`**
+**`data/example/test/foo.mcfunction`**
 ```mcfunction
 #> Summons an armor stand and finds it
 # @template example:small_platform

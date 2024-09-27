@@ -21,7 +21,7 @@ public class EulaMixin {
     @Shadow @Final private boolean agreed;
 
     @WrapOperation(method = "readFile", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;warn(Ljava/lang/String;Ljava/lang/Object;)V", remap = false))
-    private static void readFile(Logger logger, String message, Object path, Operation<Void> original) {
+    private void readFile(Logger logger, String message, Object path, Operation<Void> original) {
         if (!PackTest.isAutoEnabled()) {
             original.call(logger, message, path);
         }
