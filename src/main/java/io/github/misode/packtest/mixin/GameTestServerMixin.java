@@ -6,7 +6,10 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import io.github.misode.packtest.LoadDiagnostics;
 import io.github.misode.packtest.PackTest;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.border.WorldBorder;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
@@ -69,5 +72,13 @@ public class GameTestServerMixin {
             return 1;
         }
         return original + LoadDiagnostics.loadErrors().size();
+    }
+
+    @ModifyExpressionValue(method = "startTests", at = @At(value = "NEW", target = "(III)Lnet/minecraft/core/BlockPos;"))
+    private BlockPos startTests(BlockPos original, ServerLevel level) {
+        WorldBorder border = level.getWorldBorder();
+        int x = level.random.nextIntBetweenInclusive((int) border.getMinX(), (int) border.getMaxX());
+        int z = level.random.nextIntBetweenInclusive((int) border.getMinZ(), (int) border.getMaxZ());
+        return new BlockPos(x, original.getY(), z);
     }
 }
