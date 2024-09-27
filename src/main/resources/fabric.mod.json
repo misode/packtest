@@ -24,7 +24,7 @@
 	"accessWidener": "packtest.accesswidener",
 	"depends": {
 		"fabricloader": ">=0.15.10",
-		"minecraft": ">=1.21",
+		"minecraft": ">=1.21.1",
 		"java": ">=21",
 		"fabric-api": "*"
 	}
