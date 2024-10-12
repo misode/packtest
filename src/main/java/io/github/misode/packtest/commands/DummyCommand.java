@@ -250,7 +250,7 @@ public class DummyCommand {
             BlockHitResult blockHit = new BlockHitResult(pos, hitDirection, BlockPos.containing(pos), false);
             InteractionResult result = dummy.gameMode.useItemOn(dummy, dummy.serverLevel(), handItem, hand, blockHit);
             if (result.consumesAction()) {
-                if (result.shouldSwing()) dummy.swing(hand);
+                dummy.swing(hand);
                 return 1;
             }
         }

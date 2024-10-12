@@ -6,8 +6,8 @@ import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
-import net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -29,6 +29,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * Heavily inspired by <a href="https://github.com/gnembon/fabric-carpet/blob/master/src/main/java/carpet/patches/EntityPlayerMPFake.java">Carpet</a>
@@ -68,12 +69,12 @@ public class Dummy extends ServerPlayer {
                 new DummyClientConnection(PacketFlow.SERVERBOUND),
                 dummy,
                 new CommonListenerCookie(profile, 0, dummy.clientInformation(), false));
-        dummy.teleportTo(level, originalSpawn.x, originalSpawn.y, originalSpawn.z, 0, 0);
+        dummy.teleportTo(level, originalSpawn.x, originalSpawn.y, originalSpawn.z, Set.of(), 0, 0, true);
         dummy.setHealth(20);
         dummy.unsetRemoved();
         dummy.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
         server.getPlayerList().broadcastAll(new ClientboundRotateHeadPacket(dummy, (byte) (dummy.yHeadRot * 256 / 360)), dimensionId);
-        server.getPlayerList().broadcastAll(new ClientboundTeleportEntityPacket(dummy), dimensionId);
+        server.getPlayerList().broadcastAll(ClientboundEntityPositionSyncPacket.of(dummy), dimensionId);
         dummy.entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7f);
         return dummy;
     }
@@ -96,6 +97,7 @@ public class Dummy extends ServerPlayer {
         server.getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
     }
 
+    @SuppressWarnings("resource")
     @Override
     public void tick() {
         if (Objects.requireNonNull(this.getServer()).getTickCount() % 10 == 0) {
@@ -108,11 +110,12 @@ public class Dummy extends ServerPlayer {
         } catch (NullPointerException ignored) {}
     }
 
+    @SuppressWarnings("resource")
     @Override
     public void die(DamageSource cause) {
         super.die(cause);
         if (this.serverLevel().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN)) {
-            this.server.tell(new TickTask(this.server.getTickCount(),
+            this.server.schedule(new TickTask(this.server.getTickCount(),
                     () -> this.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN))
             ));
         }

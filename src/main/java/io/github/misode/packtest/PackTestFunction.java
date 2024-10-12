@@ -138,7 +138,7 @@ public class PackTestFunction {
     private Consumer<GameTestHelper> createTestBody(int permissionLevel) {
         return (helper) -> {
             CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
-                    .withPosition(helper.absoluteVec(Vec3.ZERO).add(0, 1, 0))
+                    .withPosition(helper.absoluteVec(Vec3.ZERO))
                     .withPermission(permissionLevel)
                     .withSuppressedOutput();
             ((PackTestSourceStack) source).packtest$setHelper(helper);

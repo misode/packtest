@@ -3,7 +3,10 @@ package io.github.misode.packtest.mixin;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import io.github.misode.packtest.PackTestLibrary;
 import net.minecraft.commands.Commands;
-import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.LayeredRegistryAccess;
+import net.minecraft.core.Registry;
+import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.ReloadableServerResources;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.world.flag.FeatureFlagSet;
@@ -28,7 +31,7 @@ public class ReloadableServerResourcesMixin {
     private Commands commands;
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void init(RegistryAccess.Frozen frozen, FeatureFlagSet featureFlagSet, Commands.CommandSelection commandSelection, int permissionLevel, CallbackInfo ci) {
+    private void init(LayeredRegistryAccess<RegistryLayer> layeredRegistryAccess, HolderLookup.Provider provider, FeatureFlagSet featureFlagSet, Commands.CommandSelection commandSelection, List<Registry.PendingTags<?>> list, int permissionLevel, CallbackInfo ci) {
         PackTestLibrary.INSTANCE.setPermissionLevel(permissionLevel);
         PackTestLibrary.INSTANCE.setDispatcher(commands.getDispatcher());
     }

@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class ReportGameListenerMixin {
 
     @ModifyArg(method = "visualizeFailedTest", at = @At(value = "INVOKE", target = "Lnet/minecraft/gametest/framework/ReportGameListener;say(Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/ChatFormatting;Ljava/lang/String;)V"), index = 2)
-    private static String visualizeFailedTest(String message, @Local(ordinal = 0) Throwable error) {
+    private static String visualizeFailedTest(String message, @Local(ordinal = 0, argsOnly = true) Throwable error) {
         if (error instanceof LineNumberException e) {
             return message.replaceFirst(" failed!", " failed on line " + e.getLineNumber() + "!");
         } else {
