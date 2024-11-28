@@ -16,14 +16,14 @@ import java.util.function.Consumer;
 @Mixin(GameTestBatch.class)
 public class GameTestBatchMixin {
     @ModifyVariable(method = "<init>", at = @At(value = "HEAD"), ordinal = 0, argsOnly = true)
-    private static Consumer<ServerLevel> modifyBeforeBatch(Consumer<ServerLevel> original, @Local(ordinal = 0) String name) {
+    private static Consumer<ServerLevel> modifyBeforeBatch(Consumer<ServerLevel> original, @Local(ordinal = 0, argsOnly = true) String name) {
         String batchName = name.substring(0, name.lastIndexOf(":"));
         Consumer<ServerLevel> beforeBatch = PackTestLibrary.INSTANCE.getBeforeBatchFunction(batchName);
         return beforeBatch != null ? beforeBatch : original;
     }
 
     @ModifyVariable(method = "<init>", at = @At(value = "HEAD"), ordinal = 0, argsOnly = true)
-    private static Consumer<ServerLevel> modifyAfterBatch(Consumer<ServerLevel> original, @Local(ordinal = 0) String name) {
+    private static Consumer<ServerLevel> modifyAfterBatch(Consumer<ServerLevel> original, @Local(ordinal = 0, argsOnly = true) String name) {
         String batchName = name.substring(0, name.lastIndexOf(":"));
         Consumer<ServerLevel> afterBatch = PackTestLibrary.INSTANCE.getAfterBatchFunction(batchName);
         return afterBatch != null ? afterBatch : original;

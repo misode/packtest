@@ -5,6 +5,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.serialization.DataResult;
 import io.github.misode.packtest.LoadDiagnostics;
+import io.github.misode.packtest.PackTestFileToIdConverter;
+import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import org.slf4j.Logger;
@@ -30,8 +32,9 @@ public class SimpleJsonResourceReloadListenerMixin {
         LoadDiagnostics.error(LOGGER, type, ((ResourceLocation)args[0]).toString(), ((DataResult.Error<?>)args[2]).message());
     }
 
-    @WrapOperation(method = "scanDirectory", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
-    private static void resourceException(Logger logger, String message, Object[] args, Operation<Void> original, @Local(ordinal = 0, argsOnly = true) String directory) {
+    @WrapOperation(method = "scanDirectory(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/FileToIdConverter;Lcom/mojang/serialization/DynamicOps;Lcom/mojang/serialization/Codec;Ljava/util/Map;)V", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
+    private static void resourceException(Logger logger, String message, Object[] args, Operation<Void> original, @Local(argsOnly = true) FileToIdConverter converter) {
+        String directory = ((PackTestFileToIdConverter)converter).packtest$getPrefix();
         String type = directory.replace("_", " ").replace("/", " ");
         LoadDiagnostics.error(LOGGER, type, ((ResourceLocation)args[0]).toString(), (args[2]).toString());
     }

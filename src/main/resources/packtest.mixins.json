@@ -12,6 +12,7 @@
     "CommandSourceStackMixin",
     "EntityArgumentMixin",
     "EntitySelectorMixin",
+    "FileToIdConverterMixin",
     "ForceLoadCommandMixin",
     "GameTestBatchMixin",
     "GameTestHelperMixin",

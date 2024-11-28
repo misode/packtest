@@ -115,7 +115,7 @@ public class PackTestFunction {
             level.getServer().getCommands().performPrefixedCommand(source, command);
         });
         if (oldBefore != null) {
-            PackTest.LOGGER.error("Only one @" + type + "batch is allowed per batch. Batch '" + batchName + "' has more than one!");
+            PackTest.LOGGER.error("Only one @{}batch is allowed per batch. Batch '{}' has more than one!", type, batchName);
         }
     }
 

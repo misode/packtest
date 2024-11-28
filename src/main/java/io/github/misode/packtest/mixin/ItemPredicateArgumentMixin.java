@@ -21,7 +21,7 @@ public class ItemPredicateArgumentMixin {
     }
 
     @ModifyReturnValue(method = "parse(Lcom/mojang/brigadier/StringReader;)Lnet/minecraft/commands/arguments/item/ItemPredicateArgument$Result;", at = @At("RETURN"))
-    private ItemPredicateArgument.Result returnPredicate(ItemPredicateArgument.Result predicate, @Local StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
+    private ItemPredicateArgument.Result returnPredicate(ItemPredicateArgument.Result predicate, @Local(argsOnly = true) StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
         return new PackTestItemPredicate(predicate, reader.getRead().substring(cursorRef.get()));
     }
 }
