@@ -35,9 +35,9 @@ data merge entity @e[type=item,distance=..2,limit=1] {Motion: [0.0, 0.01, 0.0]}
 ```
 
 ## Running tests
-Tests can be run in-game using the `test` command.
-* `test runall`: runs all the tests
-* `test runall <namespace>`: runs all tests from a specified namespace
+Tests can be run in-game using the `test` command. Some example commands:
+* `test run *:*`: runs all the tests
+* `test run <namespace>:*`: runs all tests from a specified namespace
 * `test run <test>`: runs the test with a specified name
 * `test runfailed`: runs all the previously failed tests
 * `test runthis`: runs the closes test
@@ -126,10 +126,9 @@ Fake players can be spawned using the `/dummy` command. Dummies won't save or lo
 ## Directives
 Tests can be customized by placing certain directives as special comments at the start of the test function.
 
-* `@template`: the resource location of a structure template to use for the test, defaults to an empty 1x1x1 structure
+* `@environment`: the test environment for this test, defaults to `minecraft:default`
+* `@template`: the resource location of a structure template to use for the test, defaults to `minecraft:empty`, which is an empty 1x1x1 structure
 * `@timeout`: an integer specifying the timeout, defaults to `100`
 * `@optional`: whether this test is allowed to fail, defaults to `false`, if there is no value after the directive it is considered as `true`
+* `@skyaccess`: whether this test needs sky access, defaults to `false`, which will place barrier blocks above the test
 * `@dummy`: whether to spawn a dummy at the start of the test and set `@s` to this dummy, taking a position which defaults to `~0.5 ~ ~0.5`
-* `@batch`: the batch name for this test, defaults to `packtestBatch`
-* `@beforebatch`: a command to run before this batch, there can only be one per batch
-* `@afterbatch`: a command to run after this batch, there can only be one per batch

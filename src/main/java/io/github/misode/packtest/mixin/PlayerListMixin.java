@@ -35,7 +35,7 @@ public class PlayerListMixin {
     private void fixStartingPos(ServerPlayer player, CallbackInfoReturnable<CompoundTag> cir) {
         if (player instanceof Dummy dummy) {
             Vec3 pos = dummy.originalSpawn;
-            dummy.moveTo(pos.x, pos.y, pos.z, 0, 0);
+            dummy.snapTo(pos.x, pos.y, pos.z, 0, 0);
         }
     }
 
@@ -77,7 +77,7 @@ public class PlayerListMixin {
     private void teleportDummy(ServerPlayer serverPlayer, boolean bl, Entity.RemovalReason removalReason, CallbackInfoReturnable<ServerPlayer> cir, @Local(ordinal = 1) ServerPlayer player) {
         if (player instanceof Dummy dummy) {
             Vec3 pos = dummy.originalSpawn;
-            dummy.moveTo(pos.x, pos.y, pos.z, 0, 0);
+            dummy.snapTo(pos.x, pos.y, pos.z, 0, 0);
             dummy.teleportTo(dummy.serverLevel(), pos.x, pos.y, pos.z, Set.of(), 0, 0, true);
         }
     }

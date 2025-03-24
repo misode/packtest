@@ -206,7 +206,7 @@ public class DummyCommand {
 
     private static int dropMainhand(CommandContext<CommandSourceStack> ctx, boolean stack) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
-        if (dummy.getInventory().getSelected().isEmpty()) {
+        if (dummy.getInventory().getSelectedItem().isEmpty()) {
             throw ERROR_NOT_HOLDING_ITEM.create(dummy.getUsername());
         }
         dummy.drop(stack);
@@ -224,10 +224,10 @@ public class DummyCommand {
     private static int selectSlot(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
         int slot = IntegerArgumentType.getInteger(ctx, "slot");
-        if (dummy.getInventory().selected == slot - 1) {
+        if (dummy.getInventory().getSelectedSlot() == slot - 1) {
             throw ERROR_SLOT_SELECTED.create(dummy.getUsername(), slot);
         }
-        dummy.getInventory().selected = slot - 1;
+        dummy.getInventory().setSelectedSlot(slot - 1);
         return 1;
     }
 

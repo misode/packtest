@@ -32,8 +32,8 @@ public class ReloadableServerResourcesMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void init(LayeredRegistryAccess<RegistryLayer> layeredRegistryAccess, HolderLookup.Provider provider, FeatureFlagSet featureFlagSet, Commands.CommandSelection commandSelection, List<Registry.PendingTags<?>> list, int permissionLevel, CallbackInfo ci) {
+        PackTestLibrary.INSTANCE.setRegistries(provider);
         PackTestLibrary.INSTANCE.setPermissionLevel(permissionLevel);
-        PackTestLibrary.INSTANCE.setDispatcher(commands.getDispatcher());
     }
 
     @ModifyReturnValue(method = "listeners", at = @At("RETURN"))

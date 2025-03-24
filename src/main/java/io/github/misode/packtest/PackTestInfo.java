@@ -1,7 +1,7 @@
 package io.github.misode.packtest;
 
 public interface PackTestInfo {
-    long packtest$getTick();
+    int packtest$getTick();
     void packtest$setChatListener(ChatListener listener);
     ChatListener packtest$getChatListener();
 }

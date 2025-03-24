@@ -29,7 +29,7 @@ public class LogTestReporterMixin {
     @Inject(method = "onTestFailed", at = @At(value = "HEAD"), cancellable = true)
     private void onTestFailed(GameTestInfo info, CallbackInfo ci) {
         if (PackTest.isAutoEnabled()) {
-            String testName = info.getTestName();
+            String testName = info.id().toString();
             String lineNumber = info.getError() instanceof LineNumberException err
                     ? " on line " + err.getLineNumber()
                     : "";

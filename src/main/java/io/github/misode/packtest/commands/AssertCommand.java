@@ -204,7 +204,6 @@ public class AssertCommand {
         List<? extends Entity> entities = selector.findEntities(ctx.getSource());
         SlotRange slotRange = SlotsArgument.getSlots(ctx, "slots");
         ItemPredicateArgument.Result itemPredicate = ItemPredicateArgument.getItemPredicate(ctx, "item_predicate");
-        String itemPredicateSource = ((PackTestItemPredicate)itemPredicate).source();
         int count = 0;
         for(Entity entity : entities) {
             IntList slots = slotRange.slots();
@@ -215,7 +214,7 @@ public class AssertCommand {
                 }
             }
         }
-        String expected = selectorSource + " to have items " + itemPredicateSource;
+        String expected = selectorSource + " to have items"; // TODO: add item predicate context
         if (count > 0) {
             return ok(expected);
         }
@@ -226,7 +225,6 @@ public class AssertCommand {
         BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
         SlotRange slotRange = SlotsArgument.getSlots(ctx, "slots");
         ItemPredicateArgument.Result itemPredicate = ItemPredicateArgument.getItemPredicate(ctx, "item_predicate");
-        String itemPredicateSource = ((PackTestItemPredicate)itemPredicate).source();
         BlockEntity blockEntity = ctx.getSource().getLevel().getBlockEntity(pos);
         if (blockEntity instanceof Container container) {
             int count = 0;
@@ -241,7 +239,7 @@ public class AssertCommand {
                     }
                 }
             }
-            String expected = "block to have items " + itemPredicateSource;
+            String expected = "block to have items"; // TODO: add item predicate context
             if (count > 0) {
                 return ok(expected);
             }
@@ -308,7 +306,7 @@ public class AssertCommand {
     private static AssertResult assertData(CommandContext<CommandSourceStack> ctx, DataCommands.DataProvider dataProvider) throws CommandSyntaxException {
         NbtPathArgument.NbtPath path = NbtPathArgument.getPath(ctx, "path");
         Tag data = dataProvider.access(ctx).getData();
-        return result(path.countMatching(data) > 0, path.asString() + " to match", data.getAsString());
+        return result(path.countMatching(data) > 0, path.asString() + " to match", data.toString());
     }
 
     private static AssertResult assertChatUnfiltered(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
@@ -352,7 +350,7 @@ public class AssertCommand {
             result.get(this.expectOk).ifPresentOrElse(message -> {
                 GameTestHelper helper = ((PackTestSourceStack)sourceStack).packtest$getHelper();
                 if (helper != null) {
-                    helper.fail(message);
+                    helper.fail(Component.literal(message));
                 }
                 sourceStack.callback().onFailure();
                 Frame frame = execution.currentFrame();
@@ -406,7 +404,7 @@ public class AssertCommand {
                 if (got == null) {
                     return Optional.of("Expected " + expected);
                 }
-                return Optional.of("Expected " + expected + ", got " + got);
+                return Optional.of("Expected " + expected + ", but got " + got);
             }
             if (!expectOk && ok) {
                 if (got == null) {

@@ -1,55 +1,53 @@
 package io.github.misode.packtest;
 
 import com.google.common.collect.*;
-import com.mojang.brigadier.CommandDispatcher;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.gametest.framework.TestFunction;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.MappedRegistry;
+import net.minecraft.core.RegistrationInfo;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.gametest.framework.FunctionGameTestInstance;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestInstance;
 import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 public class PackTestLibrary implements PreparableReloadListener {
-    public static final PackTestLibrary INSTANCE = new PackTestLibrary(2, new CommandDispatcher<>());
+    public static final PackTestLibrary INSTANCE = new PackTestLibrary(null,2);
     private static final FileToIdConverter LISTER = new FileToIdConverter("test", ".mcfunction");
 
+    private HolderGetter.Provider registries;
     private int permissionLevel;
-    private CommandDispatcher<CommandSourceStack> dispatcher;
-    private Collection<TestFunction> tests = Lists.newArrayList();
-    private Set<String> namespaces = Sets.newHashSet();
-    private Map<String, Consumer<ServerLevel>> beforeBatch = Maps.newHashMap();
-    private Map<String, Consumer<ServerLevel>> afterBatch = Maps.newHashMap();
 
-    public PackTestLibrary(int permissionLevel, CommandDispatcher<CommandSourceStack> dispatcher) {
+    public PackTestLibrary(HolderGetter.Provider registries, int permissionLevel) {
+        this.registries = registries;
         this.permissionLevel = permissionLevel;
-        this.dispatcher = dispatcher;
+    }
+
+    public void setRegistries(HolderLookup.Provider registries) {
+        this.registries = registries;
     }
 
     public void setPermissionLevel(int permissionLevel) {
         this.permissionLevel = permissionLevel;
     }
 
-    public void setDispatcher(CommandDispatcher<CommandSourceStack> dispatcher) {
-        this.dispatcher = dispatcher;
-    }
-
     @Override
-    public @NotNull CompletableFuture<Void> reload(PreparableReloadListener.PreparationBarrier barrier, ResourceManager resources, Executor executor1, Executor executor2) {
+    public @NotNull CompletableFuture<Void> reload(PreparationBarrier barrier, ResourceManager resources, Executor executor1, Executor executor2) {
         CompletableFuture<Map<ResourceLocation, CompletableFuture<PackTestFunction>>> prep = CompletableFuture.supplyAsync(
                 () -> LISTER.listMatchingResources(resources), executor1
         ).thenComposeAsync(map -> {
@@ -58,7 +56,7 @@ public class PackTestLibrary implements PreparableReloadListener {
                 ResourceLocation id = LISTER.fileToId(entry.getKey());
                 result.put(id, CompletableFuture.supplyAsync(() -> {
                     List<String> lines = readLines(entry.getValue());
-                    return PackTestFunction.fromLines(id, this.dispatcher, lines);
+                    return PackTestFunction.fromLines(lines, this.permissionLevel);
                 }));
             }
             CompletableFuture<?>[] futures = result.values().toArray(new CompletableFuture[0]);
@@ -66,43 +64,31 @@ public class PackTestLibrary implements PreparableReloadListener {
         });
 
         return prep.thenCompose(barrier::wait).thenAcceptAsync(functions -> {
-            Map<String, Consumer<ServerLevel>> beforeBatch = Maps.newHashMap();
-            Map<String, Consumer<ServerLevel>> afterBatch = Maps.newHashMap();
-            ImmutableList.Builder<TestFunction> testsBuilder = ImmutableList.builder();
-            ImmutableSet.Builder<String> namespacesBuilder = ImmutableSet.builder();
+            ImmutableMap.Builder<ResourceLocation, PackTestFunction> testsBuilder = ImmutableMap.builder();
             functions.forEach((id, future) -> future.handle((val, err) -> {
                 if (err != null) {
                     PackTest.LOGGER.error("Failed to load test {}", id, err);
                 } else {
-                    val.registerBatchHook(this.permissionLevel, beforeBatch, "before");
-                    val.registerBatchHook(this.permissionLevel, afterBatch, "after");
-                    testsBuilder.add(val.toTestFunction(this.permissionLevel));
-                    namespacesBuilder.add(id.getNamespace());
+                    testsBuilder.put(id, val);
                 }
                 return null;
             }).join());
-            this.tests = testsBuilder.build();
-            this.namespaces = namespacesBuilder.build();
-            this.beforeBatch = beforeBatch;
-            this.afterBatch = afterBatch;
-            PackTest.LOGGER.info("Loaded {} tests", this.tests.size());
+            ImmutableMap<ResourceLocation, PackTestFunction> tests = testsBuilder.build();
+            HolderGetter<GameTestInstance> testInstanceRegistry = this.registries.lookup(Registries.TEST_INSTANCE).orElseThrow();
+            HolderGetter<Consumer<GameTestHelper>> testFunctionRegistry = this.registries.lookup(Registries.TEST_FUNCTION).orElseThrow();
+            ((PackTestRegistry)testInstanceRegistry).packtest$setFrozen(false);
+            ((PackTestRegistry)testFunctionRegistry).packtest$setFrozen(false);
+            tests.forEach((id, test) -> {
+                ResourceKey<Consumer<GameTestHelper>> functionKey = ResourceKey.create(Registries.TEST_FUNCTION, id);
+                ((MappedRegistry<Consumer<GameTestHelper>>)testFunctionRegistry).register(functionKey, test::run, RegistrationInfo.BUILT_IN);
+                ResourceKey<GameTestInstance> instanceKey = ResourceKey.create(Registries.TEST_INSTANCE, id);
+                GameTestInstance testInstance = new FunctionGameTestInstance(functionKey, test.getTestData(this.registries));
+                ((MappedRegistry<GameTestInstance>)testInstanceRegistry).register(instanceKey, testInstance, RegistrationInfo.BUILT_IN);
+            });
+            ((PackTestRegistry)testInstanceRegistry).packtest$setFrozen(true);
+            ((PackTestRegistry)testFunctionRegistry).packtest$setFrozen(true);
+            PackTest.LOGGER.info("Loaded {} tests", tests.size());
         });
-    }
-
-    public Collection<TestFunction> getAllTestFunctions() {
-        return tests;
-    }
-
-    public Collection<String> getAllTestClassNames() {
-        return namespaces;
-    }
-
-    public @Nullable Consumer<ServerLevel> getBeforeBatchFunction(String batchName) {
-        return this.beforeBatch.get(batchName);
-    }
-
-    public @Nullable Consumer<ServerLevel> getAfterBatchFunction(String batchName) {
-        return this.afterBatch.get(batchName);
     }
 
     private static List<String> readLines(Resource resource) {

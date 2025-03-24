@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
 /**
- * Access whether a game test has a final check added
+ * Adds an accessor for the GameTestInfo
  */
 @Mixin(GameTestHelper.class)
 public class GameTestHelperMixin implements PackTestHelper {

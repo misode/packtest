@@ -13,31 +13,55 @@ import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.commands.functions.InstantiatedFunction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderGetter;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class PackTestFunction {
+public record PackTestFunction(Map<String, String> directives, List<Step> steps, int permissionLevel) {
     private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("^#\\s*@(\\w+)(?:\\s+(.+))?$");
-    private static final String DEFAULT_BATCH = "packtestBatch";
-    private static final String DEFAULT_TEMPLATE = "packtest:empty";
-    private final ResourceLocation id;
-    private final Map<String, String> directives;
-    private final List<Step> steps;
 
-    public PackTestFunction(ResourceLocation id, Map<String, String> directives, List<Step> steps) {
-        this.id = id;
-        this.directives = directives;
-        this.steps = steps;
+    public void run(GameTestHelper helper) {
+        CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
+                .withPosition(helper.absoluteVec(Vec3.ZERO))
+                .withPermission(this.permissionLevel)
+                .withSuppressedOutput();
+        ((PackTestSourceStack) source).packtest$setHelper(helper);
+
+        Vec3 dummyPos = this.getDummyPos(source).orElse(null);
+        Dummy dummy;
+        if (dummyPos != null) {
+            try {
+                dummy = Dummy.createRandom(helper.getLevel().getServer(), helper.getLevel().dimension(), dummyPos);
+                dummy.setOnGround(true); // little hack because we know the dummy will be on the ground
+                source = source.withEntity(dummy);
+            } catch (IllegalArgumentException e) {
+                throw new GameTestAssertException(Component.literal("Failed to initialize test with dummy"), 0);
+            }
+        }
+
+        ChatListener chatListener = new ChatListener();
+        ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$setChatListener(chatListener);
+        helper.onEachTick(chatListener::reset);
+
+        CommandDispatcher<CommandSourceStack> dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
+        GameTestSequence sequence = helper.startSequence();
+        for (Step step : this.steps) {
+            step.register(sequence, dispatcher, source);
+        }
+        sequence.thenSucceed();
     }
 
-    public static PackTestFunction fromLines(ResourceLocation id, CommandDispatcher<CommandSourceStack> dispatcher, List<String> lines) {
+    public static PackTestFunction fromLines(List<String> lines, int permissionLevel) {
         HashMap<String, String> directives = new HashMap<>();
         for (String line : lines) {
             if (!line.startsWith("#")) {
@@ -54,30 +78,12 @@ public class PackTestFunction {
         List<Step> steps = new ArrayList<>();
         for (int i = 0; i < lines.size(); i += 1) {
             String line = lines.get(i).stripLeading();
-            if (line.startsWith("await delay ")) {
-                steps.add(new IdleStep(line.substring("await delay ".length()), i + 1));
-            } else if (!line.startsWith("#") && !line.isEmpty()) {
-                steps.add(new CommandStep(lines.get(i), i + 1, dispatcher));
+            if (!line.startsWith("#") && !line.isEmpty()) {
+                steps.add(new Step(lines.get(i), i + 1));
             }
         }
 
-        return new PackTestFunction(id, directives, steps);
-    }
-
-    private String getTestName() {
-        return this.id.toLanguageKey();
-    }
-
-    private String getTemplateName() {
-        return this.directives.getOrDefault("template", DEFAULT_TEMPLATE);
-    }
-
-    private String getBatchName() {
-        return this.directives.getOrDefault("batch", DEFAULT_BATCH);
-    }
-
-    private int getTimeout() {
-        return Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
+        return new PackTestFunction(directives, steps, permissionLevel);
     }
 
     private Optional<Vec3> getDummyPos(CommandSourceStack source) {
@@ -95,89 +101,33 @@ public class PackTestFunction {
         }
     }
 
-    private boolean isRequired() {
-        return Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
+    public TestData<Holder<TestEnvironmentDefinition>> getTestData(HolderGetter.Provider registries) {
+        var environments = registries.lookup(Registries.TEST_ENVIRONMENT).orElseThrow();
+        ResourceLocation environmentId = Optional.ofNullable(this.directives.get("environment")).map(ResourceLocation::parse).orElse(GameTestEnvironments.DEFAULT_KEY.location());
+        Holder<TestEnvironmentDefinition> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
+        ResourceLocation structure = Optional.ofNullable(this.directives.get("template")).map(ResourceLocation::parse).orElse(ResourceLocation.withDefaultNamespace("empty"));
+        int maxTicks = Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
+        boolean required = Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
+        boolean skyAccess = Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
+        return new TestData<>(environment, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess);
     }
 
-    private boolean needsSkyAccess() {
-        return Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
-    }
-
-    public void registerBatchHook(int permissionLevel, Map<String, Consumer<ServerLevel>> map, String type) {
-        String command = this.directives.get(type + "batch");
-        if (command == null) {
-            return;
-        }
-        String batchName = this.getBatchName();
-        Consumer<ServerLevel> oldBefore = map.putIfAbsent(batchName, (level) -> {
-            CommandSourceStack source = level.getServer().createCommandSourceStack()
-                    .withPermission(permissionLevel);
-            level.getServer().getCommands().performPrefixedCommand(source, command);
-        });
-        if (oldBefore != null) {
-            PackTest.LOGGER.error("Only one @{}batch is allowed per batch. Batch '{}' has more than one!", type, batchName);
-        }
-    }
-
-    public TestFunction toTestFunction(int permissionLevel) {
-        return new TestFunction(
-                this.getBatchName(),
-                this.getTestName(),
-                this.getTemplateName(),
-                StructureUtils.getRotationForRotationSteps(0),
-                this.getTimeout(),
-                0L,
-                this.isRequired(),
-                false,
-                1,
-                1,
-                this.needsSkyAccess(),
-                createTestBody(permissionLevel));
-    }
-
-    private Consumer<GameTestHelper> createTestBody(int permissionLevel) {
-        return (helper) -> {
-            CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
-                    .withPosition(helper.absoluteVec(Vec3.ZERO))
-                    .withPermission(permissionLevel)
-                    .withSuppressedOutput();
-            ((PackTestSourceStack) source).packtest$setHelper(helper);
-
-            Vec3 dummyPos = this.getDummyPos(source).orElse(null);
-            Dummy dummy;
-            if (dummyPos != null) {
+    public record Step(String line, int lineNumber) {
+        public void register(GameTestSequence sequence, CommandDispatcher<CommandSourceStack> dispatcher, CommandSourceStack source) {
+            if (this.line.startsWith("await delay ")) {
                 try {
-                    dummy = Dummy.createRandom(helper.getLevel().getServer(), helper.getLevel().dimension(), dummyPos);
-                    dummy.setOnGround(true); // little hack because we know the dummy will be on the ground
-                    source = source.withEntity(dummy);
-                } catch (IllegalArgumentException e) {
-                    throw new GameTestAssertException("Failed to initialize test with dummy");
+                    String timeArgument = line.substring("await delay ".length());
+                    int ticks = TimeArgument.time().parse(new StringReader(timeArgument));
+                    ((PackTestSequence)sequence).packtest$thenIdle(ticks, lineNumber, timeArgument);
+                } catch (CommandSyntaxException e) {
+                    throw new LineNumberException(Component.literal("Whilst parsing command: " + e.getMessage()), 0, lineNumber);
                 }
+                return;
             }
-
-            ChatListener chatListener = new ChatListener();
-            ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$setChatListener(chatListener);
-            helper.onEachTick(chatListener::reset);
-
-            GameTestSequence sequence = helper.startSequence();
-            for (Step step : this.steps) {
-                step.register(sequence, source);
-            }
-            sequence.thenSucceed();
-        };
-    }
-
-    public interface Step {
-        void register(GameTestSequence sequence, CommandSourceStack source);
-    }
-
-    public record CommandStep(String line, int lineNumber, CommandDispatcher<CommandSourceStack> dispatcher) implements Step {
-        @Override
-        public void register(GameTestSequence sequence, CommandSourceStack source) {
             try {
                 ResourceLocation id = ResourceLocation.fromNamespaceAndPath("packtest", "internal");
-                CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, this.dispatcher, source, List.of(this.line));
-                InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, this.dispatcher);
+                CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, dispatcher, source, List.of(this.line));
+                InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, dispatcher);
                 Runnable runCommands = () -> {
                     try {
                         Commands.executeCommandInContext(
@@ -185,7 +135,7 @@ public class PackTestFunction {
                                 e -> ExecutionContext.queueInitialFunctionCall(e, instantiated, source, CommandResultCallback.EMPTY)
                         );
                     } catch (GameTestAssertException e) {
-                        throw new LineNumberException(e.getMessage(), lineNumber);
+                        throw new LineNumberException(((PackTestAssertException)e).packtest$getMessage(), ((PackTestAssertException)e).packtest$getTick(), lineNumber);
                     }
                 };
                 if (line.stripLeading().startsWith("await ")) {
@@ -198,22 +148,10 @@ public class PackTestFunction {
                 if (message.equals("Line continuation at end of file")) {
                     message = "Line continuation is not supported in tests";
                 }
-                throw new LineNumberException("Whilst parsing command: " + message, lineNumber);
+                throw new LineNumberException(Component.literal("Whilst parsing command: " + message), 0, lineNumber);
             } catch (FunctionInstantiationException e) {
                 String message = e.messageComponent().getString();
-                throw new LineNumberException("Whilst instantiating command: " + message, lineNumber);
-            }
-        }
-    }
-
-    public record IdleStep(String argument, int lineNumber) implements Step {
-        @Override
-        public void register(GameTestSequence sequence, CommandSourceStack source) {
-            try {
-                int ticks = TimeArgument.time().parse(new StringReader(argument));
-                ((PackTestSequence)sequence).packtest$thenIdle(ticks, lineNumber, argument);
-            } catch (CommandSyntaxException e) {
-                throw new LineNumberException("Whilst parsing command: " + e.getMessage(), lineNumber);
+                throw new LineNumberException(Component.literal("Whilst instantiating command: " + message), 0, lineNumber);
             }
         }
     }

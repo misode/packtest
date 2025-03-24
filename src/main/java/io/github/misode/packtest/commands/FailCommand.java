@@ -33,14 +33,8 @@ public class FailCommand {
             CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
             GameTestHelper helper = ((PackTestSourceStack)sourceStack).packtest$getHelper();
             try {
-                Component message = ComponentUtils.updateForEntity(
-                        ctx.getSource(),
-                        ComponentArgument.getComponent(ctx, "message"),
-                        null,
-                        0
-                );
                 if (helper != null) {
-                    helper.fail(message.getString());
+                    helper.fail(ComponentArgument.getResolvedComponent(ctx, "message"));
                 }
             } catch (CommandSyntaxException ignored) {}
             sourceStack.callback().onFailure();

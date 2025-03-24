@@ -26,8 +26,6 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 /**
- * Don't fail when initial batches is empty.
- * Get list of batches after data packs have been loaded.
  * Prints summary of resources that failed to load.
  * Fails when no tests were loaded.
  */
@@ -36,17 +34,6 @@ public class GameTestServerMixin {
     @Shadow @Final private static Logger LOGGER;
 
     @Shadow @Nullable private MultipleTestTracker testTracker;
-
-    @ModifyExpressionValue(method = "create", at = @At(value = "INVOKE", target = "Ljava/util/Collection;isEmpty()Z"))
-    private static boolean isBatchesEmpty(boolean original) {
-        return original && !PackTest.isAutoEnabled();
-    }
-
-    @ModifyExpressionValue(method = "<init>", at = @At(value = "INVOKE", target = "Lcom/google/common/collect/Lists;newArrayList(Ljava/lang/Iterable;)Ljava/util/ArrayList;", remap = false))
-    private ArrayList<TestFunction> modifyTests(ArrayList<TestFunction> original) {
-        Collection<TestFunction> testFunctions = GameTestRegistry.getAllTestFunctions();
-        return Lists.newArrayList(testFunctions);
-    }
 
     @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false, shift = At.Shift.AFTER))
     private void tickServer(BooleanSupplier booleanSupplier, CallbackInfo ci) {

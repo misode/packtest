@@ -18,7 +18,6 @@ import java.util.List;
 
 /**
  * Remove all dummies when clearing space for tests.
- * When force-loading chunks for tests, mark them as temporary.
  */
 @Mixin(StructureUtils.class)
 public class StructureUtilsMixin {
@@ -30,13 +29,5 @@ public class StructureUtilsMixin {
                 .map(p -> (Dummy)p)
                 .toList();
         testPlayers.forEach(p -> p.leave(Component.literal("Cleared tests")));
-    }
-
-    @WrapOperation(method = "method_54901", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
-    private static boolean setChunkForced(ServerLevel level, int x, int z, boolean value, Operation<Boolean> original) {
-        if (!level.getForcedChunks().contains(ChunkPos.asLong(x, z))) {
-            TemporaryForcedChunks.markTemporary(level, x, z);
-        }
-        return original.call(level, x, z, value);
     }
 }

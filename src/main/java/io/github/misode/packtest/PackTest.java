@@ -13,7 +13,6 @@ import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.synchronization.ArgumentUtils;
-import net.minecraft.core.BlockPos;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.server.packs.repository.PackRepository;
@@ -30,7 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
-import java.util.List;
+import java.util.Optional;
 import java.util.function.ToIntFunction;
 
 public class PackTest implements ModInitializer {
@@ -98,7 +97,7 @@ public class PackTest implements ModInitializer {
 	}
 
 	public static void runHeadlessServer(LevelStorageSource.LevelStorageAccess storage, PackRepository packRepository) {
-		GameTestServer.spin(thread -> GameTestServer.create(thread, storage, packRepository, List.of(), BlockPos.ZERO));
+		GameTestServer.spin(thread -> GameTestServer.create(thread, storage, packRepository, Optional.empty(), false));
 	}
 
 	public static String wrapError(String message) {

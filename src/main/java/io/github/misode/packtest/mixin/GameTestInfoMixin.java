@@ -25,12 +25,12 @@ public abstract class GameTestInfoMixin implements PackTestInfo {
     @Shadow
     public abstract ServerLevel getLevel();
 
-    @Shadow private long tickCount;
+    @Shadow private int tickCount;
     @Unique
     private ChatListener chatListener;
 
     @Override
-    public long packtest$getTick() {
+    public int packtest$getTick() {
         return this.tickCount;
     }
 
@@ -46,7 +46,9 @@ public abstract class GameTestInfoMixin implements PackTestInfo {
 
     @Inject(method = "finish", at = @At("HEAD"))
     private void finish(CallbackInfo ci) {
-        this.chatListener.stop();
+        if (this.chatListener != null) {
+            this.chatListener.stop();
+        }
     }
 
     @Inject(method = "succeed", at = @At(value = "INVOKE", target = "Ljava/util/List;forEach(Ljava/util/function/Consumer;)V", shift = At.Shift.AFTER))

@@ -1,13 +1,14 @@
 package io.github.misode.packtest;
 
 import net.minecraft.gametest.framework.GameTestAssertException;
+import net.minecraft.network.chat.Component;
 
 public class LineNumberException extends GameTestAssertException {
 
     final int lineNumber;
 
-    public LineNumberException(String string, int lineNumber) {
-        super(string);
+    public LineNumberException(Component message, int tick, int lineNumber) {
+        super(message, tick);
         this.lineNumber = lineNumber;
     }
 
