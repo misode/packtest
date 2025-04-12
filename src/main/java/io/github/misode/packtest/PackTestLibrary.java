@@ -80,10 +80,14 @@ public class PackTestLibrary implements PreparableReloadListener {
             ((PackTestRegistry)testFunctionRegistry).packtest$setFrozen(false);
             tests.forEach((id, test) -> {
                 ResourceKey<Consumer<GameTestHelper>> functionKey = ResourceKey.create(Registries.TEST_FUNCTION, id);
-                ((MappedRegistry<Consumer<GameTestHelper>>)testFunctionRegistry).register(functionKey, test::run, RegistrationInfo.BUILT_IN);
+                if (!((MappedRegistry<Consumer<GameTestHelper>>)testFunctionRegistry).containsKey(functionKey)) {
+                    ((MappedRegistry<Consumer<GameTestHelper>>)testFunctionRegistry).register(functionKey, test::run, RegistrationInfo.BUILT_IN);
+                }
                 ResourceKey<GameTestInstance> instanceKey = ResourceKey.create(Registries.TEST_INSTANCE, id);
-                GameTestInstance testInstance = new FunctionGameTestInstance(functionKey, test.getTestData(this.registries));
-                ((MappedRegistry<GameTestInstance>)testInstanceRegistry).register(instanceKey, testInstance, RegistrationInfo.BUILT_IN);
+                if (!((MappedRegistry<GameTestInstance>)testInstanceRegistry).containsKey(instanceKey)) {
+                    GameTestInstance testInstance = new FunctionGameTestInstance(functionKey, test.getTestData(this.registries));
+                    ((MappedRegistry<GameTestInstance>)testInstanceRegistry).register(instanceKey, testInstance, RegistrationInfo.BUILT_IN);
+                }
             });
             ((PackTestRegistry)testInstanceRegistry).packtest$setFrozen(true);
             ((PackTestRegistry)testFunctionRegistry).packtest$setFrozen(true);
