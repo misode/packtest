@@ -19,7 +19,6 @@
     "GameTestServerMixin",
     "LogTestReporterMixin",
     "MappedRegistryMixin",
-    "MinecraftServerMixin",
     "PlayerListMixin",
     "ReloadableServerResourcesMixin",
     "ReportGameListenerMixin",
