@@ -9,6 +9,7 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
@@ -95,6 +96,15 @@ public class Dummy extends ServerPlayer {
 
     public void respawn() {
         server.getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
+    }
+
+    @Override
+    public void forceSetRotation(float f, float g) {
+        this.setYRot(f);
+        this.setXRot(g);
+        this.setOldRot();
+
+        this.connection.send(new ServerboundMovePlayerPacket.Rot(f, g, false, false));
     }
 
     @SuppressWarnings("resource")
