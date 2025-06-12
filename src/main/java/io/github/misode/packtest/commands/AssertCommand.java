@@ -9,13 +9,11 @@ import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.Dynamic3CommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
-import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.*;
 import it.unimi.dsi.fastutil.ints.IntList;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.*;
 import net.minecraft.commands.arguments.blocks.BlockPredicateArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
@@ -28,11 +26,9 @@ import net.minecraft.commands.execution.Frame;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.ReloadableServerRegistries;
 import net.minecraft.server.commands.data.DataCommands;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -71,10 +67,6 @@ public class AssertCommand {
     private static final Dynamic3CommandExceptionType ERROR_SOURCE_NOT_A_CONTAINER = new Dynamic3CommandExceptionType(
             (x, y, z) -> Component.translatableEscape("commands.item.source.not_a_container", x, y, z)
     );
-    private static final SuggestionProvider<CommandSourceStack> SUGGEST_PREDICATE = (ctx, suggestions) -> {
-        ReloadableServerRegistries.Holder registries = ctx.getSource().getServer().reloadableRegistries();
-        return SharedSuggestionProvider.suggestResource(registries.getKeys(Registries.PREDICATE), suggestions);
-    };
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         LiteralArgumentBuilder<CommandSourceStack> assertBuilder = literal("assert")
@@ -100,7 +92,6 @@ public class AssertCommand {
                                         .executes(expect.apply(AssertCommand::assertEntityInside)))))
                 .then(literal("predicate")
                         .then(argument("predicate", ResourceOrIdArgument.lootPredicate(buildContext))
-                                .suggests(SUGGEST_PREDICATE)
                                 .executes(expect.apply(AssertCommand::assertPredicate))))
                 .then(literal("items")
                         .then(literal("entity")

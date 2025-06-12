@@ -15,6 +15,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.synchronization.ArgumentUtils;
 import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.gametest.framework.GameTestServer;
+import net.minecraft.gametest.framework.GameTestTicker;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.level.storage.LevelStorageSource;
@@ -97,7 +98,11 @@ public class PackTest implements ModInitializer {
 	}
 
 	public static void runHeadlessServer(LevelStorageSource.LevelStorageAccess storage, PackRepository packRepository) {
-		GameTestServer.spin(thread -> GameTestServer.create(thread, storage, packRepository, Optional.empty(), false));
+		GameTestServer.spin(thread -> {
+			GameTestServer server = GameTestServer.create(thread, storage, packRepository, Optional.empty(), false);
+			GameTestTicker.SINGLETON.startTicking();
+			return server;
+		});
 	}
 
 	public static String wrapError(String message) {

@@ -5,15 +5,16 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
 import io.github.misode.packtest.dummy.Dummy;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.storage.PlayerDataStorage;
+import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -32,19 +33,19 @@ import java.util.Set;
 @Mixin(PlayerList.class)
 public class PlayerListMixin {
     @Inject(method = "load", at = @At(value = "RETURN", shift = At.Shift.BEFORE))
-    private void fixStartingPos(ServerPlayer player, CallbackInfoReturnable<CompoundTag> cir) {
+    private void fixStartingPos(ServerPlayer player, ProblemReporter problemReporter, CallbackInfoReturnable<Optional<ValueInput>> cir) {
         if (player instanceof Dummy dummy) {
             Vec3 pos = dummy.originalSpawn;
             dummy.snapTo(pos.x, pos.y, pos.z, 0, 0);
         }
     }
 
-    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/storage/PlayerDataStorage;load(Lnet/minecraft/world/entity/player/Player;)Ljava/util/Optional;"))
-    private Optional<CompoundTag> skipLoadDummy(PlayerDataStorage playerIo, Player player, Operation<Optional<CompoundTag>> original) {
+    @WrapOperation(method = "load", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/storage/PlayerDataStorage;load(Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/util/ProblemReporter;)Ljava/util/Optional;"))
+    private Optional<ValueInput> skipLoadDummy(PlayerDataStorage playerIo, Player player, ProblemReporter problemReporter, Operation<Optional<ValueInput>> original) {
         if (player instanceof Dummy) {
             return Optional.empty();
         } else {
-            return original.call(playerIo, player);
+            return original.call(playerIo, player, problemReporter);
         }
     }
 
@@ -78,7 +79,7 @@ public class PlayerListMixin {
         if (player instanceof Dummy dummy) {
             Vec3 pos = dummy.originalSpawn;
             dummy.snapTo(pos.x, pos.y, pos.z, 0, 0);
-            dummy.teleportTo(dummy.serverLevel(), pos.x, pos.y, pos.z, Set.of(), 0, 0, true);
+            dummy.teleportTo(dummy.level(), pos.x, pos.y, pos.z, Set.of(), 0, 0, true);
         }
     }
 }
