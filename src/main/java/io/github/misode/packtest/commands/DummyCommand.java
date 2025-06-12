@@ -248,7 +248,7 @@ public class DummyCommand {
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack handItem = dummy.getItemInHand(hand);
             BlockHitResult blockHit = new BlockHitResult(pos, hitDirection, BlockPos.containing(pos), false);
-            InteractionResult result = dummy.gameMode.useItemOn(dummy, dummy.serverLevel(), handItem, hand, blockHit);
+            InteractionResult result = dummy.gameMode.useItemOn(dummy, dummy.level(), handItem, hand, blockHit);
             if (result.consumesAction()) {
                 dummy.swing(hand);
                 return 1;

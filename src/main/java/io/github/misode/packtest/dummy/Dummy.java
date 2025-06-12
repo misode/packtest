@@ -90,12 +90,12 @@ public class Dummy extends ServerPlayer {
     }
 
     public void leave(Component reason) {
-        server.getPlayerList().remove(this);
+        Objects.requireNonNull(this.getServer()).getPlayerList().remove(this);
         this.connection.onDisconnect(new DisconnectionDetails(reason));
     }
 
     public void respawn() {
-        server.getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
+        Objects.requireNonNull(this.getServer()).getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
     }
 
     @Override
@@ -112,7 +112,7 @@ public class Dummy extends ServerPlayer {
     public void tick() {
         if (Objects.requireNonNull(this.getServer()).getTickCount() % 10 == 0) {
             this.connection.resetPosition();
-            this.serverLevel().getChunkSource().move(this);
+            this.level().getChunkSource().move(this);
         }
         try {
             super.tick();
@@ -124,8 +124,8 @@ public class Dummy extends ServerPlayer {
     @Override
     public void die(DamageSource cause) {
         super.die(cause);
-        if (this.serverLevel().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN)) {
-            this.server.schedule(new TickTask(this.server.getTickCount(),
+        if (this.level().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN)) {
+            Objects.requireNonNull(this.getServer()).schedule(new TickTask(this.getServer().getTickCount(),
                     () -> this.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN))
             ));
         }
