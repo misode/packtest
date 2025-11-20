@@ -13,8 +13,6 @@ import net.minecraft.commands.execution.CustomCommandExecutor;
 import net.minecraft.commands.execution.ExecutionControl;
 import net.minecraft.commands.execution.Frame;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentUtils;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;

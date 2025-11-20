@@ -1,11 +1,9 @@
 package io.github.misode.packtest.mixin;
 
-import com.google.common.collect.Lists;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import io.github.misode.packtest.LoadDiagnostics;
-import io.github.misode.packtest.PackTest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.server.level.ServerLevel;
@@ -19,8 +17,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BooleanSupplier;

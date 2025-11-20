@@ -59,6 +59,9 @@ public class DummyCommand {
     private static final SimpleCommandExceptionType ERROR_NO_NAME = new SimpleCommandExceptionType(
             Component.literal("Cannot spawn dummy without a name")
     );
+    private static final SimpleCommandExceptionType ERROR_INVALID_DIRECTION = new SimpleCommandExceptionType(
+            Component.literal("Not a valid direction")
+    );
     private static final DynamicCommandExceptionType ERROR_DUMMY_EXISTS = createError("is already logged on");
     private static final DynamicCommandExceptionType ERROR_PLAYER_EXISTS = createError("is already a player");
     private static final DynamicCommandExceptionType ERROR_NOT_ON_GROUND = createError("is not on the ground");
@@ -243,6 +246,9 @@ public class DummyCommand {
     }
 
     private static int useBlock(CommandContext<CommandSourceStack> ctx, Direction hitDirection) throws CommandSyntaxException {
+        if (hitDirection == null) {
+            throw ERROR_INVALID_DIRECTION.create();
+        }
         Dummy dummy = getDummy(ctx);
         Vec3 pos = Vec3Argument.getVec3(ctx, "pos");
         for (InteractionHand hand : InteractionHand.values()) {

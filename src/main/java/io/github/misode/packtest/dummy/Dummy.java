@@ -2,14 +2,12 @@ package io.github.misode.packtest.dummy;
 
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
-import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
@@ -17,7 +15,6 @@ import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
-import net.minecraft.server.players.GameProfileCache;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -29,8 +26,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Heavily inspired by <a href="https://github.com/gnembon/fabric-carpet/blob/master/src/main/java/carpet/patches/EntityPlayerMPFake.java">Carpet</a>
@@ -52,18 +48,8 @@ public class Dummy extends ServerPlayer {
 
     public static Dummy create(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
         ServerLevel level = server.getLevel(dimensionId);
-        GameProfileCache.setUsesAuthentication(false);
-        GameProfile profile;
-        try {
-            var profileCache = server.getProfileCache();
-            profile = profileCache == null ? null : profileCache.get(username).orElse(null);
-        }
-        finally {
-            GameProfileCache.setUsesAuthentication(server.isDedicatedServer() && server.usesAuthentication());
-        }
-        if (profile == null) {
-            profile = new GameProfile(UUIDUtil.createOfflinePlayerUUID(username), username);
-        }
+        UUID id = UUID.randomUUID();
+        GameProfile profile = new GameProfile(id, username);
         Vec3 originalSpawn = Vec3.atBottomCenterOf(BlockPos.containing(pos));
         Dummy dummy = new Dummy(server, level, profile, ClientInformation.createDefault(), originalSpawn);
         server.getPlayerList().placeNewPlayer(
@@ -86,31 +72,29 @@ public class Dummy extends ServerPlayer {
     }
 
     public String getUsername() {
-        return this.getGameProfile().getName();
+        return this.getGameProfile().name();
     }
 
+    @SuppressWarnings("resource")
     public void leave(Component reason) {
-        Objects.requireNonNull(this.getServer()).getPlayerList().remove(this);
+        Objects.requireNonNull(this.level().getServer()).getPlayerList().remove(this);
         this.connection.onDisconnect(new DisconnectionDetails(reason));
     }
 
+    @SuppressWarnings("resource")
     public void respawn() {
-        Objects.requireNonNull(this.getServer()).getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
+        Objects.requireNonNull(this.level().getServer()).getPlayerList().respawn(this, false, Entity.RemovalReason.KILLED);
     }
 
     @Override
-    public void forceSetRotation(float f, float g) {
-        this.setYRot(f);
-        this.setXRot(g);
-        this.setOldRot();
-
-        this.connection.send(new ServerboundMovePlayerPacket.Rot(f, g, false, false));
+    public @NotNull BlockPos adjustSpawnLocation(ServerLevel serverLevel, BlockPos blockPos) {
+        return BlockPos.containing(this.originalSpawn);
     }
 
     @SuppressWarnings("resource")
     @Override
     public void tick() {
-        if (Objects.requireNonNull(this.getServer()).getTickCount() % 10 == 0) {
+        if (Objects.requireNonNull(this.level().getServer()).getTickCount() % 10 == 0) {
             this.connection.resetPosition();
             this.level().getChunkSource().move(this);
         }
@@ -125,7 +109,8 @@ public class Dummy extends ServerPlayer {
     public void die(DamageSource cause) {
         super.die(cause);
         if (this.level().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN)) {
-            Objects.requireNonNull(this.getServer()).schedule(new TickTask(this.getServer().getTickCount(),
+            MinecraftServer server = Objects.requireNonNull(this.level().getServer());
+            server.schedule(new TickTask(server.getTickCount(),
                     () -> this.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN))
             ));
         }

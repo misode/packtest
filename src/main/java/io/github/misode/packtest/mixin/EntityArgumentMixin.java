@@ -25,7 +25,7 @@ public class EntityArgumentMixin {
     }
 
     @ModifyReturnValue(method = "parse(Lcom/mojang/brigadier/StringReader;)Lnet/minecraft/commands/arguments/selector/EntitySelector;", at = @At("RETURN"))
-    private EntitySelector returnSelector(EntitySelector selector, @Local StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
+    private EntitySelector returnSelector(EntitySelector selector, @Local(argsOnly = true) StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
         ((PackTestArgumentSource)selector).packtest$setSource(reader.getRead().substring(cursorRef.get()));
         return selector;
     }
