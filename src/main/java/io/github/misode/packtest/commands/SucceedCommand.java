@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.ContextChain;
 import io.github.misode.packtest.PackTestSourceStack;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.execution.ChainModifiers;
 import net.minecraft.commands.execution.CustomCommandExecutor;
 import net.minecraft.commands.execution.ExecutionControl;
@@ -15,7 +16,7 @@ import static net.minecraft.commands.Commands.literal;
 public class SucceedCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("succeed")
-                .requires(ctx -> ctx.hasPermission(2))
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(new SucceedCommand.SucceedCustomExecutor())
         );
     }

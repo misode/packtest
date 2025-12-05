@@ -11,9 +11,11 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestInstance;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.server.permissions.PermissionSet;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.BufferedReader;
@@ -26,36 +28,36 @@ import java.util.concurrent.Executor;
 import java.util.function.Consumer;
 
 public class PackTestLibrary implements PreparableReloadListener {
-    public static final PackTestLibrary INSTANCE = new PackTestLibrary(null,2);
+    public static final PackTestLibrary INSTANCE = new PackTestLibrary(null, LevelBasedPermissionSet.GAMEMASTER);
     private static final FileToIdConverter LISTER = new FileToIdConverter("test", ".mcfunction");
 
     private HolderGetter.Provider registries;
-    private int permissionLevel;
+    private PermissionSet permissionSet;
 
-    public PackTestLibrary(HolderGetter.Provider registries, int permissionLevel) {
+    public PackTestLibrary(HolderGetter.Provider registries, PermissionSet permissionSet) {
         this.registries = registries;
-        this.permissionLevel = permissionLevel;
+        this.permissionSet = permissionSet;
     }
 
     public void setRegistries(HolderLookup.Provider registries) {
         this.registries = registries;
     }
 
-    public void setPermissionLevel(int permissionLevel) {
-        this.permissionLevel = permissionLevel;
+    public void setPermissionSet(PermissionSet permissionSet) {
+        this.permissionSet = permissionSet;
     }
 
     @Override
     public @NotNull CompletableFuture<Void> reload(PreparableReloadListener.SharedState sharedState, Executor executor1, PreparableReloadListener.PreparationBarrier barrier, Executor executor2) {
-        CompletableFuture<Map<ResourceLocation, CompletableFuture<PackTestFunction>>> prep = CompletableFuture.supplyAsync(
+        CompletableFuture<Map<Identifier, CompletableFuture<PackTestFunction>>> prep = CompletableFuture.supplyAsync(
                 () -> LISTER.listMatchingResources(sharedState.resourceManager()), executor1
         ).thenComposeAsync(map -> {
-            Map<ResourceLocation, CompletableFuture<PackTestFunction>> result = Maps.newHashMap();
-            for(Map.Entry<ResourceLocation, Resource> entry : map.entrySet()) {
-                ResourceLocation id = LISTER.fileToId(entry.getKey());
+            Map<Identifier, CompletableFuture<PackTestFunction>> result = Maps.newHashMap();
+            for(Map.Entry<Identifier, Resource> entry : map.entrySet()) {
+                Identifier id = LISTER.fileToId(entry.getKey());
                 result.put(id, CompletableFuture.supplyAsync(() -> {
                     List<String> lines = readLines(entry.getValue());
-                    return PackTestFunction.fromLines(lines, this.permissionLevel);
+                    return PackTestFunction.fromLines(lines, this.permissionSet);
                 }));
             }
             CompletableFuture<?>[] futures = result.values().toArray(new CompletableFuture[0]);
@@ -63,7 +65,7 @@ public class PackTestLibrary implements PreparableReloadListener {
         });
 
         return prep.thenCompose(barrier::wait).thenAcceptAsync(functions -> {
-            ImmutableMap.Builder<ResourceLocation, PackTestFunction> testsBuilder = ImmutableMap.builder();
+            ImmutableMap.Builder<Identifier, PackTestFunction> testsBuilder = ImmutableMap.builder();
             functions.forEach((id, future) -> future.handle((val, err) -> {
                 if (err != null) {
                     PackTest.LOGGER.error("Failed to load test {}", id, err);
@@ -72,7 +74,7 @@ public class PackTestLibrary implements PreparableReloadListener {
                 }
                 return null;
             }).join());
-            ImmutableMap<ResourceLocation, PackTestFunction> tests = testsBuilder.build();
+            ImmutableMap<Identifier, PackTestFunction> tests = testsBuilder.build();
             HolderGetter<GameTestInstance> testInstanceRegistry = this.registries.lookup(Registries.TEST_INSTANCE).orElseThrow();
             HolderGetter<Consumer<GameTestHelper>> testFunctionRegistry = this.registries.lookup(Registries.TEST_FUNCTION).orElseThrow();
             ((PackTestRegistry)testInstanceRegistry).packtest$setFrozen(false);

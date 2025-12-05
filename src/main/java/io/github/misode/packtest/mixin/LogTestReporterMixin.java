@@ -2,7 +2,7 @@ package io.github.misode.packtest.mixin;
 
 import io.github.misode.packtest.LineNumberException;
 import io.github.misode.packtest.PackTest;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.gametest.framework.LogTestReporter;
 import org.slf4j.Logger;

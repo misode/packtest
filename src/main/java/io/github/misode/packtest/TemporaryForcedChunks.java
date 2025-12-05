@@ -24,7 +24,7 @@ public class TemporaryForcedChunks {
     private record TemporaryChunk(String dimension, int x, int z) {
 
         private static TemporaryChunk from(ServerLevel level, int x, int z) {
-            return new TemporaryChunk(level.dimension().location().toString(), x, z);
+            return new TemporaryChunk(level.dimension().identifier().toString(), x, z);
         }
     }
 }

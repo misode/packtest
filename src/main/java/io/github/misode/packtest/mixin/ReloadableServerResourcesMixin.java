@@ -9,6 +9,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.server.RegistryLayer;
 import net.minecraft.server.ReloadableServerResources;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
+import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.flag.FeatureFlagSet;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,14 +27,10 @@ import java.util.List;
 @Mixin(ReloadableServerResources.class)
 public class ReloadableServerResourcesMixin {
 
-    @Shadow
-    @Final
-    private Commands commands;
-
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void init(LayeredRegistryAccess<RegistryLayer> layeredRegistryAccess, HolderLookup.Provider provider, FeatureFlagSet featureFlagSet, Commands.CommandSelection commandSelection, List<Registry.PendingTags<?>> list, int permissionLevel, CallbackInfo ci) {
+    private void init(LayeredRegistryAccess<RegistryLayer> layeredRegistryAccess, HolderLookup.Provider provider, FeatureFlagSet featureFlagSet, Commands.CommandSelection commandSelection, List<Registry.PendingTags<?>> list, PermissionSet permissionSet, CallbackInfo ci) {
         PackTestLibrary.INSTANCE.setRegistries(provider);
-        PackTestLibrary.INSTANCE.setPermissionLevel(permissionLevel);
+        PackTestLibrary.INSTANCE.setPermissionSet(permissionSet);
     }
 
     @ModifyReturnValue(method = "listeners", at = @At("RETURN"))

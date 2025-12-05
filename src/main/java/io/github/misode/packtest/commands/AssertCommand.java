@@ -11,9 +11,10 @@ import com.mojang.brigadier.exceptions.Dynamic3CommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import io.github.misode.packtest.*;
 import it.unimi.dsi.fastutil.ints.IntList;
-import net.minecraft.advancements.critereon.MinMaxBounds;
+import net.minecraft.advancements.criterion.MinMaxBounds;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.*;
 import net.minecraft.commands.arguments.blocks.BlockPredicateArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
@@ -70,7 +71,7 @@ public class AssertCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         LiteralArgumentBuilder<CommandSourceStack> assertBuilder = literal("assert")
-                .requires(ctx -> ctx.hasPermission(2));
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS));
         addConditions(assertBuilder, buildContext, predicate -> new AssertCustomExecutor(true, predicate));
         LiteralArgumentBuilder<CommandSourceStack> notBuilder = literal("not");
         addConditions(notBuilder, buildContext, predicate -> new AssertCustomExecutor(false, predicate));
@@ -199,7 +200,7 @@ public class AssertCommand {
         for(Entity entity : entities) {
             IntList slots = slotRange.slots();
             for(int i = 0; i < slots.size(); ++i) {
-                ItemStack itemStack = entity.getSlot(slots.getInt(i)).get();
+                ItemStack itemStack = Objects.requireNonNull(entity.getSlot(slots.getInt(i))).get();
                 if (itemPredicate.test(itemStack)) {
                     count += itemStack.getCount();
                 }

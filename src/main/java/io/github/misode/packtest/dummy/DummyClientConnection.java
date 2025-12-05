@@ -4,6 +4,7 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.ProtocolInfo;
 import net.minecraft.network.protocol.PacketFlow;
+import org.jetbrains.annotations.NotNull;
 
 public class DummyClientConnection extends Connection {
 
@@ -18,8 +19,8 @@ public class DummyClientConnection extends Connection {
     public void handleDisconnection() {}
 
     @Override
-    public void setListenerForServerboundHandshake(PacketListener packetListener) {}
+    public void setListenerForServerboundHandshake(@NotNull PacketListener packetListener) {}
 
     @Override
-    public <T extends PacketListener> void setupInboundProtocol(ProtocolInfo<T> protocolInfo, T packetListener) {}
+    public <T extends PacketListener> void setupInboundProtocol(@NotNull ProtocolInfo<@NotNull T> protocolInfo, T packetListener) {}
 }

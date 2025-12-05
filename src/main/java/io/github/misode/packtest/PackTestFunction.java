@@ -19,7 +19,8 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.*;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec3;
 
@@ -27,13 +28,13 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public record PackTestFunction(Map<String, String> directives, List<Step> steps, int permissionLevel) {
+public record PackTestFunction(Map<String, String> directives, List<Step> steps, PermissionSet permissionSet) {
     private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("^#\\s*@(\\w+)(?:\\s+(.+))?$");
 
     public void run(GameTestHelper helper) {
         CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
                 .withPosition(helper.absoluteVec(Vec3.ZERO))
-                .withPermission(this.permissionLevel)
+                .withPermission(this.permissionSet)
                 .withSuppressedOutput();
         ((PackTestSourceStack) source).packtest$setHelper(helper);
 
@@ -61,7 +62,7 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
         sequence.thenSucceed();
     }
 
-    public static PackTestFunction fromLines(List<String> lines, int permissionLevel) {
+    public static PackTestFunction fromLines(List<String> lines, PermissionSet permissionSet) {
         HashMap<String, String> directives = new HashMap<>();
         for (String line : lines) {
             if (!line.startsWith("#")) {
@@ -83,7 +84,7 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
             }
         }
 
-        return new PackTestFunction(directives, steps, permissionLevel);
+        return new PackTestFunction(directives, steps, permissionSet);
     }
 
     private Optional<Vec3> getDummyPos(CommandSourceStack source) {
@@ -103,9 +104,9 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
 
     public TestData<Holder<TestEnvironmentDefinition>> getTestData(HolderGetter.Provider registries) {
         var environments = registries.lookup(Registries.TEST_ENVIRONMENT).orElseThrow();
-        ResourceLocation environmentId = Optional.ofNullable(this.directives.get("environment")).map(ResourceLocation::parse).orElse(GameTestEnvironments.DEFAULT_KEY.location());
+        Identifier environmentId = Optional.ofNullable(this.directives.get("environment")).map(Identifier::parse).orElse(GameTestEnvironments.DEFAULT_KEY.identifier());
         Holder<TestEnvironmentDefinition> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
-        ResourceLocation structure = Optional.ofNullable(this.directives.get("template")).map(ResourceLocation::parse).orElse(ResourceLocation.withDefaultNamespace("empty"));
+        Identifier structure = Optional.ofNullable(this.directives.get("template")).map(Identifier::parse).orElse(Identifier.withDefaultNamespace("empty"));
         int maxTicks = Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
         boolean required = Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
         boolean skyAccess = Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
@@ -125,7 +126,7 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
                 return;
             }
             try {
-                ResourceLocation id = ResourceLocation.fromNamespaceAndPath("packtest", "internal");
+                Identifier id = Identifier.fromNamespaceAndPath("packtest", "internal");
                 CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, dispatcher, source, List.of(this.line));
                 InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, dispatcher);
                 Runnable runCommands = () -> {

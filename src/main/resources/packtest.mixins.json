@@ -27,7 +27,6 @@
     "SimpleJsonResourceReloadListenerMixin",
     "StructureUtilsMixin",
     "TagLoaderMixin",
-    "TestCommandMixin",
     "TestInstanceBlockEntityMixin"
   ],
   "server": [

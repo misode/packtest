@@ -20,9 +20,9 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.GameRules;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
@@ -108,7 +108,7 @@ public class Dummy extends ServerPlayer {
     @Override
     public void die(DamageSource cause) {
         super.die(cause);
-        if (this.level().getGameRules().getBoolean(GameRules.RULE_DO_IMMEDIATE_RESPAWN)) {
+        if (this.level().getGameRules().get(GameRules.IMMEDIATE_RESPAWN)) {
             MinecraftServer server = Objects.requireNonNull(this.level().getServer());
             server.schedule(new TickTask(server.getTickCount(),
                     () -> this.connection.handleClientCommand(new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN))

@@ -13,6 +13,7 @@ import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.PackTestPlayerName;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
@@ -84,6 +85,7 @@ public class DummyCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(literal("dummy")
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(argument("dummy", EntityArgument.entity())
                         .suggests(SUGGEST_DUMMY_NAME)
                         .then(literal("spawn")
