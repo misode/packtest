@@ -34,6 +34,7 @@ import net.minecraft.server.commands.data.DataCommands;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.inventory.SlotRange;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -200,9 +201,9 @@ public class AssertCommand {
         for(Entity entity : entities) {
             IntList slots = slotRange.slots();
             for(int i = 0; i < slots.size(); ++i) {
-                ItemStack itemStack = Objects.requireNonNull(entity.getSlot(slots.getInt(i))).get();
-                if (itemPredicate.test(itemStack)) {
-                    count += itemStack.getCount();
+                SlotAccess slot = entity.getSlot(slots.getInt(i));
+                if (slot != null && itemPredicate.test(slot.get())) {
+                    count += slot.get().getCount();
                 }
             }
         }
