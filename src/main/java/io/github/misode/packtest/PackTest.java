@@ -97,7 +97,7 @@ public class PackTest implements ModInitializer {
 	}
 
 	public static void runHeadlessServer(LevelStorageSource.LevelStorageAccess storage, PackRepository packRepository) {
-		GameTestServer.spin(thread -> GameTestServer.create(thread, storage, packRepository, Optional.empty(), false));
+		GameTestServer.spin(thread -> GameTestServer.create(thread, storage, packRepository, Optional.empty(), false, 0));
 	}
 
 	public static String wrapError(String message) {

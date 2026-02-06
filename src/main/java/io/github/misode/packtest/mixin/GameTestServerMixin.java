@@ -60,8 +60,8 @@ public class GameTestServerMixin {
     @ModifyExpressionValue(method = "startTests", at = @At(value = "NEW", target = "(III)Lnet/minecraft/core/BlockPos;"))
     private BlockPos startTests(BlockPos original, ServerLevel level) {
         WorldBorder border = level.getWorldBorder();
-        int x = level.random.nextIntBetweenInclusive((int) border.getMinX(), (int) border.getMaxX());
-        int z = level.random.nextIntBetweenInclusive((int) border.getMinZ(), (int) border.getMaxZ());
+        int x = level.getRandom().nextIntBetweenInclusive((int) border.getMinX(), (int) border.getMaxX());
+        int z = level.getRandom().nextIntBetweenInclusive((int) border.getMinZ(), (int) border.getMaxZ());
         return new BlockPos(x, original.getY(), z);
     }
 }

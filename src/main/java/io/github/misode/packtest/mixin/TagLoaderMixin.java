@@ -31,7 +31,7 @@ public class TagLoaderMixin {
         LoadDiagnostics.error(LOGGER, this.directory, identifier, error);
     }
 
-    @WrapOperation(method = "method_33175", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
+    @WrapOperation(method = "lambda$build$2", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private static void catchTagReferenceError(Logger logger, String message, Object id, Object refs, Operation<Void> original) {
         LoadDiagnostics.error(LOGGER, "tag", ((Identifier)id).toString(), "Missing references: " + refs);
     }

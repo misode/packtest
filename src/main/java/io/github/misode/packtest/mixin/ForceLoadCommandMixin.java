@@ -21,7 +21,7 @@ public class ForceLoadCommandMixin {
         return handleChange(level, x, z, toggle, original);
     }
 
-    @WrapOperation(method = "method_13377", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
+    @WrapOperation(method = "lambda$removeAll$0", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
     private static boolean removeAll(ServerLevel level, int x, int z, boolean toggle, Operation<Boolean> original) {
         return handleChange(level, x, z, toggle, original);
     }

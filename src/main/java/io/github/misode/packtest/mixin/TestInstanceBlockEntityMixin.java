@@ -14,9 +14,9 @@ import org.spongepowered.asm.mixin.injection.At;
  */
 @Mixin(TestInstanceBlockEntity.class)
 public class TestInstanceBlockEntityMixin {
-    @WrapOperation(method = "method_66743", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
+    @WrapOperation(method = "lambda$forceLoadChunks$0", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
     private static boolean setChunkForced(ServerLevel level, int x, int z, boolean bl, Operation<Boolean> original) {
-        if (!level.getForceLoadedChunks().contains(ChunkPos.asLong(x, z))) {
+        if (!level.getForceLoadedChunks().contains(ChunkPos.pack(x, z))) {
             TemporaryForcedChunks.markTemporary(level, x, z);
         }
         return original.call(level, x, z, bl);

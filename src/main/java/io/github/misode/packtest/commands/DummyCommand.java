@@ -273,10 +273,7 @@ public class DummyCommand {
             pos = entity.position();
         }
         for (InteractionHand hand : InteractionHand.values()) {
-            if (entity.interactAt(dummy, pos, hand).consumesAction()) {
-                return 1;
-            }
-            if (dummy.interactOn(entity, hand).consumesAction()) {
+            if (dummy.interactOn(entity, hand, pos).consumesAction()) {
                 return 1;
             }
         }

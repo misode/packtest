@@ -25,7 +25,7 @@ public class SimpleJsonResourceReloadListenerMixin {
     @Final
     private static Logger LOGGER;
 
-    @WrapOperation(method = "method_63567", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
+    @WrapOperation(method = "lambda$scanDirectory$1", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
     private static void resourceParseError(Logger logger, String message, Object[] args, Operation<Void> original) {
         String resourcePath = ((Identifier)args[1]).getPath();
         String type = resourcePath.substring(0, resourcePath.indexOf('/')).replace("_", " ").replace("/", " ");
@@ -34,7 +34,7 @@ public class SimpleJsonResourceReloadListenerMixin {
 
     @WrapOperation(method = "scanDirectory(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/FileToIdConverter;Lcom/mojang/serialization/DynamicOps;Lcom/mojang/serialization/Codec;Ljava/util/Map;)V", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
     private static void resourceException(Logger logger, String message, Object[] args, Operation<Void> original, @Local(argsOnly = true) FileToIdConverter converter) {
-        String directory = ((PackTestFileToIdConverter)converter).packtest$getPrefix();
+        String directory = ((PackTestFileToIdConverter)(Object)converter).packtest$getPrefix();
         String type = directory.replace("_", " ").replace("/", " ");
         LoadDiagnostics.error(LOGGER, type, ((Identifier)args[0]).toString(), (args[2]).toString());
     }

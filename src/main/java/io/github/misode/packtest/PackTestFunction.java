@@ -102,15 +102,15 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
         }
     }
 
-    public TestData<Holder<TestEnvironmentDefinition>> getTestData(HolderGetter.Provider registries) {
+    public TestData<Holder<TestEnvironmentDefinition<?>>> getTestData(HolderGetter.Provider registries) {
         var environments = registries.lookup(Registries.TEST_ENVIRONMENT).orElseThrow();
         Identifier environmentId = Optional.ofNullable(this.directives.get("environment")).map(Identifier::parse).orElse(GameTestEnvironments.DEFAULT_KEY.identifier());
-        Holder<TestEnvironmentDefinition> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
+        Holder<TestEnvironmentDefinition<?>> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
         Identifier structure = Optional.ofNullable(this.directives.get("template")).map(Identifier::parse).orElse(Identifier.withDefaultNamespace("empty"));
         int maxTicks = Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
         boolean required = Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
         boolean skyAccess = Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
-        return new TestData<>(environment, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess);
+        return new TestData<>(environment, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess, 0);
     }
 
     public record Step(String line, int lineNumber) {

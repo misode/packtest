@@ -13,8 +13,17 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(targets = "net.minecraft.gametest.framework.GameTestRunner$1")
 public class GameTestRunner1Mixin {
 
-    @WrapOperation(method = "method_56233", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
+    @WrapOperation(method = "lambda$testCompleted$1", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
     private boolean testCompleted(ServerLevel level, int x, int z, boolean value, Operation<Boolean> original) {
+        if (TemporaryForcedChunks.isTemporary(level, x, z)) {
+            TemporaryForcedChunks.unmarkTemporary(level, x, z);
+            return original.call(level, x, z, value);
+        }
+        return false;
+    }
+
+    @WrapOperation(method = "lambda$testFailed$0", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/level/ServerLevel;setChunkForced(IIZ)Z"))
+    private boolean testFailed(ServerLevel level, int x, int z, boolean value, Operation<Boolean> original) {
         if (TemporaryForcedChunks.isTemporary(level, x, z)) {
             TemporaryForcedChunks.unmarkTemporary(level, x, z);
             return original.call(level, x, z, value);

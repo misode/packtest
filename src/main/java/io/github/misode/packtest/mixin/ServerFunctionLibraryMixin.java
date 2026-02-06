@@ -20,7 +20,7 @@ public class ServerFunctionLibraryMixin {
     @Final
     private static Logger LOGGER;
 
-    @WrapOperation(method = "method_29457", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
+    @WrapOperation(method = "lambda$reload$7", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false))
     private static void catchFunctionError(Logger logger, String message, Object id, Object e, Operation<Void> original) {
         String error = ((Exception)e).getMessage().replaceFirst("^[A-Za-z0-9.]+Exception: ", "");
         LoadDiagnostics.error(LOGGER, "function", ((Identifier)id).toString(), error);
