@@ -55,9 +55,10 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
         helper.onEachTick(chatListener::reset);
 
         CommandDispatcher<CommandSourceStack> dispatcher = helper.getLevel().getServer().getCommands().getDispatcher();
+        GameTestInfo testInfo = ((PackTestHelper)helper).packtest$getInfo();
         GameTestSequence sequence = helper.startSequence();
         for (Step step : this.steps) {
-            step.register(sequence, dispatcher, source);
+            step.register(sequence, dispatcher, source, testInfo);
         }
         sequence.thenSucceed();
     }
@@ -114,7 +115,7 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
     }
 
     public record Step(String line, int lineNumber) {
-        public void register(GameTestSequence sequence, CommandDispatcher<CommandSourceStack> dispatcher, CommandSourceStack source) {
+        public void register(GameTestSequence sequence, CommandDispatcher<CommandSourceStack> dispatcher, CommandSourceStack source, GameTestInfo testInfo) {
             if (this.line.startsWith("await delay ")) {
                 try {
                     String timeArgument = line.substring("await delay ".length());
@@ -130,6 +131,9 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
                 CommandFunction<CommandSourceStack> function = CommandFunction.fromLines(id, dispatcher, source, List.of(this.line));
                 InstantiatedFunction<CommandSourceStack> instantiated = function.instantiate(null, dispatcher);
                 Runnable runCommands = () -> {
+                    if (testInfo.isDone() || testInfo.hasFailed()) {
+                        return;
+                    }
                     try {
                         Commands.executeCommandInContext(
                                 source,
