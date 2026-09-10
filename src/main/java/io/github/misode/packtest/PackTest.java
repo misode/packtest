@@ -61,7 +61,7 @@ public class PackTest implements ModInitializer {
 	public static void generateCommandsReport() {
 		Path path = Paths.get("generated", "reports", "commands.json");
 		CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
-		registerCommands(dispatcher, Commands.createValidationContext(VanillaRegistries.createLookup()));
+		registerCommands(dispatcher, Commands.createValidationContext(VanillaRegistries.createWorldLookup()));
 		JsonObject data = ArgumentUtils.serializeNodeToJson(dispatcher, dispatcher.getRoot());
 		ToIntFunction<String> fixedOrderFields = Util.make(new Object2IntOpenHashMap<>(), map -> {
 			map.put("type", 0);

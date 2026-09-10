@@ -30,6 +30,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -260,7 +261,7 @@ public class DummyCommand {
             InteractionResult result = dummy.gameMode.useItemOn(dummy, dummy.level(), handItem, hand, blockHit);
             if (result.consumesAction()) {
                 CriteriaTriggers.ANY_BLOCK_USE.trigger(dummy, blockHit.getBlockPos(), handItem);
-                dummy.swing(hand);
+                dummy.swing(hand, SwingAnimation.DEFAULT, false);
                 return 1;
             }
         }
@@ -289,7 +290,7 @@ public class DummyCommand {
         Dummy dummy = getDummy(ctx);
         Entity entity = EntityArgument.getEntity(ctx, "entity");
         dummy.attack(entity);
-        dummy.swing(InteractionHand.MAIN_HAND);
+        dummy.swing(InteractionHand.MAIN_HAND, SwingAnimation.DEFAULT, false);
         return 1;
     }
 

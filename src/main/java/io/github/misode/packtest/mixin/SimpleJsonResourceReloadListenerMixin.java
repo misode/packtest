@@ -2,10 +2,8 @@ package io.github.misode.packtest.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.serialization.DataResult;
 import io.github.misode.packtest.LoadDiagnostics;
-import io.github.misode.packtest.PackTestFileToIdConverter;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -25,16 +23,20 @@ public class SimpleJsonResourceReloadListenerMixin {
     @Final
     private static Logger LOGGER;
 
-    @WrapOperation(method = "lambda$scanDirectory$1", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
+    @Shadow
+    @Final
+    private FileToIdConverter lister;
+
+    @WrapOperation(method = "lambda$prepare$1", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
     private static void resourceParseError(Logger logger, String message, Object[] args, Operation<Void> original) {
         String resourcePath = ((Identifier)args[1]).getPath();
         String type = resourcePath.substring(0, resourcePath.indexOf('/')).replace("_", " ").replace("/", " ");
         LoadDiagnostics.error(LOGGER, type, ((Identifier)args[0]).toString(), ((DataResult.Error<?>)args[2]).message());
     }
 
-    @WrapOperation(method = "scanDirectory(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/resources/FileToIdConverter;Lcom/mojang/serialization/DynamicOps;Lcom/mojang/serialization/Codec;Ljava/util/Map;)V", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
-    private static void resourceException(Logger logger, String message, Object[] args, Operation<Void> original, @Local(argsOnly = true) FileToIdConverter converter) {
-        String directory = ((PackTestFileToIdConverter)(Object)converter).packtest$getPrefix();
+    @WrapOperation(method = "prepare(Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)Ljava/util/Map;", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;error(Ljava/lang/String;[Ljava/lang/Object;)V", remap = false))
+    private void resourceException(Logger logger, String message, Object[] args, Operation<Void> original) {
+        String directory = this.lister.prefix();
         String type = directory.replace("_", " ").replace("/", " ");
         LoadDiagnostics.error(LOGGER, type, ((Identifier)args[0]).toString(), (args[2]).toString());
     }

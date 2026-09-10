@@ -6,6 +6,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.LayeredRegistryAccess;
 import net.minecraft.server.RegistryLayer;
+import net.minecraft.server.ReloadableServerRegistries;
 import net.minecraft.server.ReloadableServerResources;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.permissions.PermissionSet;
@@ -25,8 +26,8 @@ import java.util.List;
 public class ReloadableServerResourcesMixin {
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    private void init(LayeredRegistryAccess<RegistryLayer> registries, HolderLookup.Provider provider, FeatureFlagSet enabledFeatures, Commands.CommandSelection commands, List<?> postponedTags, PermissionSet permissionSet, List<?> newComponents, CallbackInfo ci) {
-        PackTestLibrary.INSTANCE.setRegistries(provider);
+    private void init(ReloadableServerRegistries.LoadResult context, FeatureFlagSet enabledFeatures, Commands.CommandSelection commands, List postponedTags, PermissionSet permissionSet, List newComponents, CallbackInfo ci) {
+        PackTestLibrary.INSTANCE.setRegistries(context.lookupWithUpdatedTags());
         PackTestLibrary.INSTANCE.setPermissionSet(permissionSet);
     }
 

@@ -30,6 +30,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.commands.ArgProvider;
+import net.minecraft.server.commands.data.DataAccessor;
 import net.minecraft.server.commands.data.DataCommands;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -125,10 +127,10 @@ public class AssertCommand {
                                 .then(argument("receivers", EntityArgument.players())
                                         .executes(expect.apply(AssertCommand::assertChatFiltered)))));
 
-        for(DataCommands.DataProvider dataProvider : DataCommands.SOURCE_PROVIDERS) {
-            builder.then(dataProvider.wrap(literal("data"),
+        for(ArgProvider<DataAccessor> provider : DataCommands.SOURCE_PROVIDERS) {
+            builder.then(provider.wrap(literal("data"),
                     dataBuilder -> dataBuilder.then(argument("path", NbtPathArgument.nbtPath())
-                            .executes(expect.apply(ctx -> assertData(ctx, dataProvider))))));
+                            .executes(expect.apply(ctx -> assertData(ctx, provider))))));
         }
     }
 
@@ -296,7 +298,7 @@ public class AssertCommand {
         return builder.toString();
     }
 
-    private static AssertResult assertData(CommandContext<CommandSourceStack> ctx, DataCommands.DataProvider dataProvider) throws CommandSyntaxException {
+    private static AssertResult assertData(CommandContext<CommandSourceStack> ctx, ArgProvider<DataAccessor> dataProvider) throws CommandSyntaxException {
         NbtPathArgument.NbtPath path = NbtPathArgument.getPath(ctx, "path");
         Tag data = dataProvider.access(ctx).getData();
         return result(path.countMatching(data) > 0, path.asString() + " to match", data.toString());

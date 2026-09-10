@@ -21,6 +21,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.permissions.PermissionSet;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.phys.Vec3;
 
@@ -107,11 +108,12 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
         var environments = registries.lookup(Registries.TEST_ENVIRONMENT).orElseThrow();
         Identifier environmentId = Optional.ofNullable(this.directives.get("environment")).map(Identifier::parse).orElse(GameTestEnvironments.DEFAULT_KEY.identifier());
         Holder<TestEnvironmentDefinition<?>> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
+        ResourceKey<Level> dimension = Level.OVERWORLD; // TODO: make configurable?
         Identifier structure = Optional.ofNullable(this.directives.get("template")).map(Identifier::parse).orElse(Identifier.withDefaultNamespace("empty"));
         int maxTicks = Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
         boolean required = Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
         boolean skyAccess = Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
-        return new TestData<>(environment, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess, 0);
+        return new TestData<>(environment, dimension, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess, 0);
     }
 
     public record Step(String line, int lineNumber) {
