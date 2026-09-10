@@ -12,6 +12,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
 import io.github.misode.packtest.PackTestPlayerName;
 import io.github.misode.packtest.dummy.Dummy;
+import net.minecraft.advancements.triggers.CriteriaTriggers;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
@@ -258,6 +259,7 @@ public class DummyCommand {
             BlockHitResult blockHit = new BlockHitResult(pos, hitDirection, BlockPos.containing(pos), false);
             InteractionResult result = dummy.gameMode.useItemOn(dummy, dummy.level(), handItem, hand, blockHit);
             if (result.consumesAction()) {
+                CriteriaTriggers.ANY_BLOCK_USE.trigger(dummy, blockHit.getBlockPos(), handItem);
                 dummy.swing(hand);
                 return 1;
             }
@@ -273,7 +275,10 @@ public class DummyCommand {
             pos = entity.position();
         }
         for (InteractionHand hand : InteractionHand.values()) {
-            if (dummy.interactOn(entity, hand, pos).consumesAction()) {
+            ItemStack used = dummy.getItemInHand(hand).copy();
+            InteractionResult result = dummy.interactOn(entity, hand, pos);
+            if (result instanceof InteractionResult.Success success) {
+                CriteriaTriggers.PLAYER_INTERACTED_WITH_ENTITY.trigger(dummy, success.wasItemInteraction() ? used : ItemStack.EMPTY, entity);
                 return 1;
             }
         }
