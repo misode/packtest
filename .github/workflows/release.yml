@@ -32,6 +32,6 @@ jobs:
         with:
           version: ${{ env.version }}
           changelog: ${{ github.event.inputs.changelog }}
-          modrinth-id: neH5ooPP
+          modrinth-id: XsKUhp45
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
