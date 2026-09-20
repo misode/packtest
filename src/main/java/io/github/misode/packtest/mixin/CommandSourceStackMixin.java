@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import io.github.misode.packtest.PackTestSourceStack;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.gametest.framework.GameTestHelper;
+import org.jspecify.annotations.NonNull;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -17,7 +18,7 @@ public class CommandSourceStackMixin implements PackTestSourceStack {
         return this.helper;
     }
 
-    public void packtest$setHelper(GameTestHelper helper) {
+    public void packtest$setHelper(@NonNull GameTestHelper helper) {
         this.helper = helper;
     }
 
