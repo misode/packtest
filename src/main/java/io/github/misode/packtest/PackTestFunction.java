@@ -29,13 +29,14 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public record PackTestFunction(Map<String, String> directives, List<Step> steps, PermissionSet permissionSet) {
+public record PackTestFunction(List<Step> steps, Map<String, String> directives, PermissionSet permissionSet) {
     private static final Pattern DIRECTIVE_PATTERN = Pattern.compile("^#\\s*@(\\w+)(?:\\s+(.+))?$");
 
     public void run(GameTestHelper helper) {
         CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
+                .withLevel(helper.getLevel())
                 .withPosition(helper.absoluteVec(Vec3.ZERO))
-                .withPermission(this.permissionSet)
+                .withPermission(permissionSet)
                 .withSuppressedOutput();
         ((PackTestSourceStack) source).packtest$setHelper(helper);
 
@@ -86,7 +87,7 @@ public record PackTestFunction(Map<String, String> directives, List<Step> steps,
             }
         }
 
-        return new PackTestFunction(directives, steps, permissionSet);
+        return new PackTestFunction(steps, directives, permissionSet);
     }
 
     private Optional<Vec3> getDummyPos(CommandSourceStack source) {
