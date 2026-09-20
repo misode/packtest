@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Remove coordinates and add line numbers from failing test logs when auto is enabled.
+ * Remove coordinates and add command numbers from failing test logs when auto is enabled.
  * Apply ascii color codes to failure messages.
  */
 @Mixin(LogTestReporter.class)

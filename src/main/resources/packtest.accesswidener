@@ -3,3 +3,4 @@ accessWidener v2 official
 accessible class net/minecraft/core/MappedRegistry$TagSet
 accessible class net/minecraft/gametest/framework/ReportGameListener
 accessible class net/minecraft/gametest/framework/GameTestEvent
+accessible field net/minecraft/gametest/framework/GameTestHelper testInfo Lnet/minecraft/gametest/framework/GameTestInfo;

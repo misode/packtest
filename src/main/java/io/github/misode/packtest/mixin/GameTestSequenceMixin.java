@@ -11,14 +11,15 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
 /**
- * Add an idle method that includes the line number in the failure message
+ * Add an idle method that includes the command number in the failure message
  */
 @Mixin(GameTestSequence.class)
 public abstract class GameTestSequenceMixin implements PackTestSequence {
 
-    @Shadow public abstract GameTestSequence thenWaitUntil(Runnable runnable);
+    @Shadow public abstract GameTestSequence thenWaitUntil(Runnable assertion);
 
-    @Shadow @Final GameTestInfo parent;
+    @Shadow @Final
+    private GameTestInfo parent;
 
     @Shadow private int lastTick;
 

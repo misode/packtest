@@ -22,7 +22,6 @@ import net.minecraft.commands.arguments.selector.EntitySelector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
@@ -31,7 +30,6 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.SwingAnimation;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -165,8 +163,7 @@ public class DummyCommand {
         if (player != null) {
             throw ERROR_PLAYER_EXISTS.create(name);
         }
-        ResourceKey<Level> dimension = source.getLevel().dimension();
-        Dummy.create(name, server, dimension, source.getPosition());
+        Dummy.create(name, source.getLevel(), source.getPosition(), source.getRotation());
         return 1;
     }
 

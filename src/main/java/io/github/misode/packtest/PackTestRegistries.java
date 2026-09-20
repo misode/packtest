@@ -86,15 +86,6 @@ public class PackTestRegistries {
         PackTest.LOGGER.info("Loaded {} test functions", tests.size());
     }
 
-    private static void clearRegistered(MappedRegistry<Consumer<GameTestHelper>> functions) {
-        MappedRegistryAccessor<Consumer<GameTestHelper>> accessor = unfrozen(functions);
-
-        if (!registeredFunctionKeys.isEmpty()) {
-            accessor.packtest$clearByPredicate(registeredFunctionKeys::contains);
-            registeredFunctionKeys.clear();
-        }
-    }
-
     private <T> MappedRegistry<T> replace(ResourceKey<Registry<T>> registryKey, RegistryAccess.Frozen source) {
         MappedRegistry<T> registry = (MappedRegistry<T>) registries.lookupOrThrow(registryKey);
         MappedRegistryAccessor<T> accessor = unfrozen(registry);
@@ -111,6 +102,15 @@ public class PackTestRegistries {
 
         accessor.packtest$adopt(loaded);
         return registry;
+    }
+
+    private static void clearRegistered(MappedRegistry<Consumer<GameTestHelper>> functions) {
+        MappedRegistryAccessor<Consumer<GameTestHelper>> accessor = unfrozen(functions);
+
+        if (!registeredFunctionKeys.isEmpty()) {
+            accessor.packtest$clearByPredicate(registeredFunctionKeys::contains);
+            registeredFunctionKeys.clear();
+        }
     }
 
     private static <T> Map<TagKey<T>, List<Holder<T>>> rebind(Registry<T> loaded, Registry<T> registry) {

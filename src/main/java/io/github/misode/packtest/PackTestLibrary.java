@@ -1,6 +1,7 @@
 package io.github.misode.packtest;
 
 import com.google.common.collect.*;
+import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.core.*;
@@ -26,12 +27,15 @@ public class PackTestLibrary implements PreparableReloadListener {
 
     private final PackTestRegistries registries;
     private final PermissionSet testCompilationPermissions;
+    private final CommandDispatcher<CommandSourceStack> dispatcher;
 
     public PackTestLibrary(
             HolderLookup.Provider registries,
-            PermissionSet testCompilationPermissions) {
+            PermissionSet testCompilationPermissions,
+            CommandDispatcher<CommandSourceStack> dispatcher) {
         this.registries = new PackTestRegistries(registries);
         this.testCompilationPermissions = testCompilationPermissions;
+        this.dispatcher = dispatcher;
     }
 
     @Override
@@ -64,7 +68,7 @@ public class PackTestLibrary implements PreparableReloadListener {
             Identifier id = LISTER.fileToId(entry.getKey());
             result.put(id, CompletableFuture.supplyAsync(() -> {
                 List<String> lines = readLines(entry.getValue());
-                return PackTestFunction.fromLines(lines, compilationContext.permissions());
+                return PackTestFunction.fromLines(this.dispatcher, compilationContext, lines);
             }, taskExecutor));
         }
 

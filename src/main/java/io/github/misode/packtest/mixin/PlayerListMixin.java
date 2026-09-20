@@ -42,7 +42,7 @@ public class PlayerListMixin {
     @WrapOperation(method = "respawn", at = @At(value = "NEW", target = "(Lnet/minecraft/server/MinecraftServer;Lnet/minecraft/server/level/ServerLevel;Lcom/mojang/authlib/GameProfile;Lnet/minecraft/server/level/ClientInformation;)Lnet/minecraft/server/level/ServerPlayer;"))
     private ServerPlayer createDummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli, Operation<ServerPlayer> original, @Local(ordinal = 0, argsOnly = true) ServerPlayer player) {
         if (player instanceof Dummy dummy) {
-            return new Dummy(server, level, profile, cli, dummy.originalSpawn);
+            return new Dummy(server, level, profile, cli, dummy.spawnPosition, dummy.spawnRotation);
         } else {
             return original.call(server, level, profile, cli);
         }

@@ -8,23 +8,23 @@ import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ClientboundEntityPositionSyncPacket;
 import net.minecraft.network.protocol.game.ClientboundRotateHeadPacket;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
-import net.minecraft.util.RandomSource;
+import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 
 import java.util.*;
 
@@ -32,43 +32,45 @@ import java.util.*;
  * Heavily inspired by <a href="https://github.com/gnembon/fabric-carpet/blob/master/src/main/java/carpet/patches/EntityPlayerMPFake.java">Carpet</a>
  */
 public class Dummy extends ServerPlayer {
-    public Vec3 originalSpawn;
+    public final Vec3 spawnPosition;
+    public final Vec2 spawnRotation;
 
-    public static Dummy createRandom(MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
-        RandomSource random = server.overworld().getRandom();
+    public static Dummy createRandom(ServerLevel level, Vec3 pos, Vec2 rot) {
+        PlayerList playerList = level.getServer().getPlayerList();
         int tries = 0;
         while (tries++ < 10) {
-            String playerName = "Dummy" + random.nextInt(100, 1000);
-            if (server.getPlayerList().getPlayerByName(playerName) == null) {
-                return create(playerName, server, dimensionId, pos);
+            String playerName = "Dummy" + level.getRandom().nextInt(100, 1000);
+            if (playerList.getPlayerByName(playerName) == null) {
+                return create(playerName, level, pos, rot);
             }
         }
         throw new IllegalStateException("Failed to spawn dummy with a random name");
     }
 
-    public static Dummy create(String username, MinecraftServer server, ResourceKey<Level> dimensionId, Vec3 pos) {
-        ServerLevel level = server.getLevel(dimensionId);
+    public static Dummy create(String username, ServerLevel level, Vec3 pos, Vec2 rot) {
+        MinecraftServer server = level.getServer();
         UUID id = UUID.randomUUID();
         GameProfile profile = new GameProfile(id, username);
         Vec3 originalSpawn = Vec3.atBottomCenterOf(BlockPos.containing(pos));
-        Dummy dummy = new Dummy(server, level, profile, ClientInformation.createDefault(), originalSpawn);
+        Dummy dummy = new Dummy(server, level, profile, ClientInformation.createDefault(), pos, rot);
         server.getPlayerList().placeNewPlayer(
                 new DummyClientConnection(PacketFlow.SERVERBOUND),
                 dummy,
                 new CommonListenerCookie(profile, 0, dummy.clientInformation(), false));
-        dummy.teleportTo(level, originalSpawn.x, originalSpawn.y, originalSpawn.z, Set.of(), 0, 0, true);
+        dummy.teleportTo(level, originalSpawn.x, originalSpawn.y, originalSpawn.z, Set.of(), rot.y, rot.x, true);
         dummy.setHealth(20);
         dummy.unsetRemoved();
         dummy.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
-        server.getPlayerList().broadcastAll(new ClientboundRotateHeadPacket(dummy, (byte) (dummy.yHeadRot * 256 / 360)), dimensionId);
-        server.getPlayerList().broadcastAll(ClientboundEntityPositionSyncPacket.of(dummy), dimensionId);
+        server.getPlayerList().broadcastAll(new ClientboundRotateHeadPacket(dummy, (byte) (dummy.yHeadRot * 256 / 360)), level.dimension());
+        server.getPlayerList().broadcastAll(ClientboundEntityPositionSyncPacket.of(dummy), level.dimension());
         dummy.entityData.set(DATA_PLAYER_MODE_CUSTOMISATION, (byte) 0x7f);
         return dummy;
     }
 
-    public Dummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli, Vec3 originalSpawn) {
+    public Dummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli, Vec3 pos, Vec2 rot) {
         super(server, level, profile, cli);
-        this.originalSpawn = originalSpawn;
+        this.spawnPosition = pos;
+        this.spawnRotation = rot;
     }
 
     public String getUsername() {
@@ -87,8 +89,8 @@ public class Dummy extends ServerPlayer {
     }
 
     @Override
-    public @NotNull BlockPos adjustSpawnLocation(ServerLevel serverLevel, BlockPos blockPos) {
-        return BlockPos.containing(this.originalSpawn);
+    public @NotNull BlockPos adjustSpawnLocation(@NonNull ServerLevel serverLevel, @NonNull BlockPos blockPos) {
+        return BlockPos.containing(this.spawnPosition);
     }
 
     @SuppressWarnings("resource")
@@ -106,7 +108,7 @@ public class Dummy extends ServerPlayer {
 
     @SuppressWarnings("resource")
     @Override
-    public void die(DamageSource cause) {
+    public void die(@NonNull DamageSource cause) {
         super.die(cause);
         if (this.level().getGameRules().get(GameRules.IMMEDIATE_RESPAWN)) {
             MinecraftServer server = Objects.requireNonNull(this.level().getServer());
@@ -117,7 +119,7 @@ public class Dummy extends ServerPlayer {
     }
 
     @Override
-    public void onEquipItem(final EquipmentSlot slot, final ItemStack previous, final ItemStack stack) {
+    public void onEquipItem(final @NonNull EquipmentSlot slot, final @NonNull ItemStack previous, final @NonNull ItemStack stack) {
         if (!isUsingItem()) super.onEquipItem(slot, previous, stack);
     }
 

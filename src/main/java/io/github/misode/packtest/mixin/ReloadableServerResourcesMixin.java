@@ -10,7 +10,9 @@ import net.minecraft.server.ReloadableServerResources;
 import net.minecraft.server.packs.resources.PreparableReloadListener;
 import net.minecraft.server.permissions.PermissionSet;
 import net.minecraft.world.flag.FeatureFlagSet;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -20,10 +22,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Adds {@link PackTestLibrary} to the /reload listeners and give it the permissionSet
+ * Adds {@link PackTestLibrary} to the /reload listeners
  */
 @Mixin(ReloadableServerResources.class)
 public class ReloadableServerResourcesMixin {
+    @Shadow
+    @Final
+    private Commands commands;
     @Unique
     private PackTestLibrary testLibrary;
 
@@ -38,7 +43,8 @@ public class ReloadableServerResourcesMixin {
             CallbackInfo ci) {
         this.testLibrary = new PackTestLibrary(
                 loadingContext.lookupWithUpdatedTags(),
-                functionCompilationPermissions);
+                functionCompilationPermissions,
+                this.commands.getDispatcher());
     }
 
     @ModifyReturnValue(method = "listeners", at = @At("RETURN"))
