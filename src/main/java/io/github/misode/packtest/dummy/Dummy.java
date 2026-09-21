@@ -1,6 +1,7 @@
 package io.github.misode.packtest.dummy;
 
 import com.mojang.authlib.GameProfile;
+import net.fabricmc.fabric.impl.networking.PacketListenerExtensions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.DisconnectionDetails;
 import net.minecraft.network.chat.Component;
@@ -80,6 +81,11 @@ public class Dummy extends ServerPlayer {
     @SuppressWarnings("resource")
     public void leave(Component reason) {
         Objects.requireNonNull(this.level().getServer()).getPlayerList().remove(this);
+        // Fabric only ends its networking session from Connection.channelInactive/handleDisconnection,
+        // which a channel-less dummy never reaches; without this the listener stays tracked forever.
+        if (this.connection instanceof PacketListenerExtensions extensions) {
+            extensions.getAddon().handleDisconnect();
+        }
         this.connection.onDisconnect(new DisconnectionDetails(reason));
     }
 
