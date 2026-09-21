@@ -18,6 +18,7 @@
     "GameTestServerMixin",
     "LogTestReporterMixin",
     "MappedRegistryMixin",
+    "PackMixin",
     "PlayerListMixin",
     "ReloadableServerResourcesMixin",
     "ReportGameListenerMixin",

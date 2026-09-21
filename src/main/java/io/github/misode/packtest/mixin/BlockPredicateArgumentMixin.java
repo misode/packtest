@@ -20,12 +20,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(BlockPredicateArgument.class)
 public class BlockPredicateArgumentMixin {
     @Inject(method = "parse(Lnet/minecraft/core/HolderLookup;Lcom/mojang/brigadier/StringReader;)Lnet/minecraft/commands/arguments/blocks/BlockPredicateArgument$Result;", at = @At("HEAD"))
-    private static void getCursor(HolderLookup<Block> holderLookup, StringReader stringReader, CallbackInfoReturnable<BlockPredicateArgument.Result> cir, @Share("cursor") LocalIntRef cursorRef) {
-        cursorRef.set(stringReader.getCursor());
+    private static void getCursor(HolderLookup<Block> blocks, StringReader reader, CallbackInfoReturnable<BlockPredicateArgument.Result> cir, @Share("cursor") LocalIntRef cursorRef) {
+        cursorRef.set(reader.getCursor());
     }
 
     @ModifyReturnValue(method = "parse(Lnet/minecraft/core/HolderLookup;Lcom/mojang/brigadier/StringReader;)Lnet/minecraft/commands/arguments/blocks/BlockPredicateArgument$Result;", at = @At("RETURN"))
-    private static BlockPredicateArgument.Result returnSelector(BlockPredicateArgument.Result result, @Local(argsOnly = true) StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
+    private static BlockPredicateArgument.Result returnSelector(BlockPredicateArgument.Result result, @Local(argsOnly = true, name = "reader") StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
         ((PackTestArgumentSource)result).packtest$setSource(reader.getRead().substring(cursorRef.get()));
         return result;
     }

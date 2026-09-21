@@ -20,12 +20,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class EntityArgumentMixin {
 
     @Inject(method = "parse(Lcom/mojang/brigadier/StringReader;Z)Lnet/minecraft/commands/arguments/selector/EntitySelector;", at = @At("HEAD"))
-    private void getCursor(StringReader stringReader, boolean bl, CallbackInfoReturnable<EntitySelector> cir, @Share("cursor") LocalIntRef cursorRef) {
-        cursorRef.set(stringReader.getCursor());
+    private void getCursor(StringReader reader, boolean allowSelectors, CallbackInfoReturnable<EntitySelector> cir, @Share("cursor") LocalIntRef cursorRef) {
+        cursorRef.set(reader.getCursor());
     }
 
     @ModifyReturnValue(method = "parse(Lcom/mojang/brigadier/StringReader;Z)Lnet/minecraft/commands/arguments/selector/EntitySelector;", at = @At("RETURN"))
-    private EntitySelector returnSelector(EntitySelector selector, @Local(argsOnly = true) StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
+    private EntitySelector returnSelector(EntitySelector selector, @Local(argsOnly = true, name = "reader") StringReader reader, @Share("cursor") LocalIntRef cursorRef) {
         ((PackTestArgumentSource)selector).packtest$setSource(reader.getRead().substring(cursorRef.get()));
         return selector;
     }

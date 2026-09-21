@@ -31,7 +31,7 @@ public class PlayerListMixin {
     }
 
     @WrapOperation(method = "getPlayerAdvancements", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
-    private Object getPlayerAdvancements(Map<Object, Object> map, Object key, Operation<Object> original, @Local(ordinal = 0, argsOnly = true) ServerPlayer player) {
+    private Object getPlayerAdvancements(Map<Object, Object> map, Object key, Operation<Object> original, @Local(argsOnly = true, name = "player") ServerPlayer player) {
         if (player instanceof Dummy) {
             return null;
         } else {
@@ -40,11 +40,11 @@ public class PlayerListMixin {
     }
 
     @WrapOperation(method = "respawn", at = @At(value = "NEW", target = "(Lnet/minecraft/server/MinecraftServer;Lnet/minecraft/server/level/ServerLevel;Lcom/mojang/authlib/GameProfile;Lnet/minecraft/server/level/ClientInformation;)Lnet/minecraft/server/level/ServerPlayer;"))
-    private ServerPlayer createDummy(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation cli, Operation<ServerPlayer> original, @Local(ordinal = 0, argsOnly = true) ServerPlayer player) {
-        if (player instanceof Dummy dummy) {
-            return new Dummy(server, level, profile, cli, dummy.spawnPosition, dummy.spawnRotation);
+    private ServerPlayer createDummy(MinecraftServer server, ServerLevel level, GameProfile gameProfile, ClientInformation clientInformation, Operation<ServerPlayer> original, @Local(argsOnly = true, name = "serverPlayer") ServerPlayer serverPlayer) {
+        if (serverPlayer instanceof Dummy dummy) {
+            return new Dummy(server, level, gameProfile, clientInformation, dummy.spawnPosition, dummy.spawnRotation);
         } else {
-            return original.call(server, level, profile, cli);
+            return original.call(server, level, gameProfile, clientInformation);
         }
     }
 }

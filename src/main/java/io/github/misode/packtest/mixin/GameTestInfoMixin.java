@@ -52,8 +52,8 @@ public abstract class GameTestInfoMixin implements PackTestInfo {
     }
 
     @Inject(method = "succeed", at = @At(value = "INVOKE", target = "Ljava/util/List;forEach(Ljava/util/function/Consumer;)V", shift = At.Shift.AFTER))
-    private void succeed(CallbackInfo ci, @Local(ordinal = 0) AABB aabb) {
-        this.getLevel().getEntitiesOfClass(Dummy.class, aabb.inflate(1))
+    private void succeed(CallbackInfo ci, @Local(name = "bounds") AABB bounds) {
+        this.getLevel().getEntitiesOfClass(Dummy.class, bounds.inflate(1))
                 .forEach(dummy -> dummy.leave(Component.literal("Test succeeded")));
     }
 }
