@@ -69,7 +69,7 @@ public class PackTestRegistries {
 
             try {
                 if (!instances.containsKey(instanceKey)) {
-                    TestData<Holder<TestEnvironmentDefinition<?>>> testData = test.getTestData(this.registries);
+                    TestData<Holder<TestEnvironmentDefinition<?>>> testData = test.directives().createTestData(environments);
                     instances.register(instanceKey, new FunctionGameTestInstance(functionKey, testData), RegistrationInfo.BUILT_IN);
                 }
 

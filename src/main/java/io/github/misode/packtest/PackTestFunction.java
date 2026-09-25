@@ -8,44 +8,21 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.functions.CommandFunction;
-import net.minecraft.core.Holder;
-import net.minecraft.core.HolderGetter;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.*;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Rotation;
 
 import java.util.*;
 
-public record PackTestFunction(List<Step> steps, Map<String, String> directives) {
+public record PackTestFunction(List<Step> steps, PackTestDirectives directives) {
     public void run(GameTestHelper helper) {
-        PackTestExecutor executor = new PackTestExecutor(helper, this.maxTicks());
+        PackTestExecutor executor = new PackTestExecutor(helper, this.directives.maxTicks());
         executor.run(this);
-    }
-
-    public TestData<Holder<TestEnvironmentDefinition<?>>> getTestData(HolderGetter.Provider registries) {
-        var environments = registries.lookup(Registries.TEST_ENVIRONMENT).orElseThrow();
-        Identifier environmentId = Optional.ofNullable(this.directives.get("environment")).map(Identifier::parse).orElse(GameTestEnvironments.DEFAULT_KEY.identifier());
-        Holder<TestEnvironmentDefinition<?>> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
-        ResourceKey<Level> dimension = Level.OVERWORLD; // TODO: make configurable?
-        Identifier structure = Optional.ofNullable(this.directives.get("template")).map(Identifier::parse).orElse(Identifier.withDefaultNamespace("empty"));
-        int maxTicks = this.maxTicks();
-        boolean required = Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
-        boolean skyAccess = Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
-        return new TestData<>(environment, dimension, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess, 0);
-    }
-
-    private int maxTicks() {
-        return Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
     }
 
     public static PackTestFunction fromLines(
             CommandDispatcher<CommandSourceStack> dispatcher,
             CommandSourceStack context,
             List<String> lines) throws IllegalArgumentException {
-        HashMap<String, String> directives = new HashMap<>();
+        PackTestDirectives directives = new PackTestDirectives();
         List<Step> steps = new ArrayList<>();
         int i = 0;
 
@@ -87,7 +64,7 @@ public record PackTestFunction(List<Step> steps, Map<String, String> directives)
 
     private static void parseDirective(
             StringReader reader,
-            Map<String, String> directives) throws IllegalArgumentException {
+            PackTestDirectives directives) throws IllegalArgumentException {
         reader.skip();
         reader.skipWhitespace();
 
@@ -96,7 +73,7 @@ public record PackTestFunction(List<Step> steps, Map<String, String> directives)
             String name = reader.readUnquotedString();
             reader.skipWhitespace();
             String value = reader.canRead() ? reader.getRemaining() : null;
-            directives.put(name, value != null ? value : "true");
+            directives.add(name, value);
         }
     }
 

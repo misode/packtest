@@ -1,6 +1,5 @@
 package io.github.misode.packtest;
 
-import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import io.github.misode.packtest.commands.assertions.AssertResult;
@@ -9,7 +8,6 @@ import net.minecraft.commands.CommandResultCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.Coordinates;
-import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -82,7 +80,7 @@ public class PackTestExecutor {
                 .withPosition(helper.absoluteVec(Vec3.ZERO))
                 .withSuppressedOutput();
 
-        Optional<Coordinates> coordinates = this.getDummyPos(function);
+        Optional<Coordinates> coordinates = function.directives().dummy();
         if (coordinates.isPresent()) {
             try {
                 Vec3 pos = coordinates.get().getPosition(source);
@@ -96,21 +94,6 @@ public class PackTestExecutor {
         }
 
         return source;
-    }
-
-    private Optional<Coordinates> getDummyPos(PackTestFunction function) {
-        String dummyValue = function.directives().get("dummy");
-        if (dummyValue == null) {
-            return Optional.empty();
-        }
-        if (dummyValue.equals("true")) {
-            dummyValue = "~0.5 ~ ~0.5";
-        }
-        try {
-            return Optional.of(Vec3Argument.vec3().parse(new StringReader(dummyValue)));
-        } catch (CommandSyntaxException e) {
-            return Optional.empty();
-        }
     }
 
     public void succeed() {
