@@ -1,6 +1,6 @@
 package io.github.misode.packtest.mixin;
 
-import io.github.misode.packtest.LineNumberException;
+import io.github.misode.packtest.PackTestException;
 import io.github.misode.packtest.PackTest;
 import net.minecraft.util.Util;
 import net.minecraft.gametest.framework.GameTestInfo;
@@ -27,14 +27,14 @@ public class LogTestReporterMixin {
 
     @SuppressWarnings("DataFlowIssue")
     @Inject(method = "onTestFailed", at = @At(value = "HEAD"), cancellable = true)
-    private void onTestFailed(GameTestInfo info, CallbackInfo ci) {
+    private void onTestFailed(GameTestInfo testInfo, CallbackInfo ci) {
         if (PackTest.isAutoEnabled()) {
-            String testName = info.id().toString();
-            String lineNumber = info.getError() instanceof LineNumberException err
-                    ? " on line " + err.getLineNumber()
+            String testName = testInfo.id().toString();
+            String lineNumber = testInfo.getError() instanceof PackTestException err
+                    ? " on line " + err.getLine()
                     : "";
-            String message = Util.describeError(info.getError());
-            if (info.isRequired()) {
+            String message = Util.describeError(testInfo.getError());
+            if (testInfo.isRequired()) {
                 if (PackTest.isAnnotationsEnabled()) {
                     LOGGER.error(PackTest.wrapError("{} failed{}!") + "\n::error title=Test {} failed{}!::{}", testName, lineNumber, testName, lineNumber, message);
                 } else {

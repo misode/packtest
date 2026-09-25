@@ -4,18 +4,25 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.authlib.GameProfile;
+import io.github.misode.packtest.ChatRecorder;
 import io.github.misode.packtest.dummy.Dummy;
+import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.PlayerChatMessage;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
+import net.minecraft.util.Util;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Prevent player data and advancements from being saved for dummies.
@@ -23,6 +30,17 @@ import java.util.Map;
  */
 @Mixin(PlayerList.class)
 public class PlayerListMixin {
+
+    @Inject(method = "broadcastSystemMessage(Lnet/minecraft/network/chat/Component;Ljava/util/function/Function;Z)V", at = @At("HEAD"))
+    private void recordBroadcast(Component message, Function<ServerPlayer, Component> playerMessages, boolean overlay, CallbackInfo ci) {
+        ChatRecorder.record(Util.NIL_UUID, message.getString());
+    }
+
+    @Inject(method = "broadcastChatMessage(Lnet/minecraft/network/chat/PlayerChatMessage;Ljava/util/function/Predicate;Lnet/minecraft/server/level/ServerPlayer;Lnet/minecraft/network/chat/ChatType$Bound;)V", at = @At("HEAD"))
+    private void recordChatBroadcast(PlayerChatMessage message, Predicate<ServerPlayer> isFiltered, ServerPlayer senderPlayer, ChatType.Bound chatType, CallbackInfo ci) {
+        ChatRecorder.record(Util.NIL_UUID, message.decoratedContent().getString());
+    }
+
     @Inject(method = "save", at = @At(value = "HEAD"), cancellable = true)
     private void skipSaveDummy(ServerPlayer player, CallbackInfo ci) {
         if (player instanceof Dummy) {

@@ -1,6 +1,6 @@
 package io.github.misode.packtest.mixin;
 
-import io.github.misode.packtest.ChatListener;
+import io.github.misode.packtest.ChatRecorder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,9 +13,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ServerPlayer.class)
 public class ServerPlayerMixin {
-
     @Inject(method = "sendSystemMessage(Lnet/minecraft/network/chat/Component;Z)V", at = @At("HEAD"))
-    private void sendSystemMessage(Component message, boolean bl, CallbackInfo ci) {
-        ChatListener.broadcast((ServerPlayer)(Object)this, message);
+    private void sendSystemMessage(Component message, boolean overlay, CallbackInfo ci) {
+        ServerPlayer player = (ServerPlayer) (Object) this;
+        ChatRecorder.record(player.getUUID(), message.getString());
     }
 }

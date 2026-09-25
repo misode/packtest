@@ -1,13 +1,9 @@
 package io.github.misode.packtest.mixin;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import io.github.misode.packtest.TemporaryForcedChunks;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.gametest.framework.StructureUtils;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -23,9 +19,9 @@ import java.util.List;
 public class StructureUtilsMixin {
 
     @Inject(method = "clearSpaceForStructure", at = @At("TAIL"))
-    private static void clearDummies(BoundingBox boundingBox, ServerLevel level, CallbackInfo ci) {
+    private static void clearDummies(BoundingBox structureBoundingBox, ServerLevel level, CallbackInfo ci) {
         List<Dummy> testPlayers = level.getServer().getPlayerList().getPlayers().stream()
-                .filter(p -> p instanceof Dummy && boundingBox.isInside(p.blockPosition()))
+                .filter(p -> p instanceof Dummy && structureBoundingBox.isInside(p.blockPosition()))
                 .map(p -> (Dummy)p)
                 .toList();
         testPlayers.forEach(p -> p.leave(Component.literal("Cleared tests")));

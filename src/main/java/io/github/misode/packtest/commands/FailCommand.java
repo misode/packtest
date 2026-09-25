@@ -2,44 +2,37 @@ package io.github.misode.packtest.commands;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import io.github.misode.packtest.PackTestSourceStack;
+import io.github.misode.packtest.PackTestExecutor;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ComponentArgument;
-import net.minecraft.commands.execution.ChainModifiers;
-import net.minecraft.commands.execution.CustomCommandExecutor;
-import net.minecraft.commands.execution.ExecutionControl;
-import net.minecraft.commands.execution.Frame;
-import net.minecraft.gametest.framework.GameTestHelper;
-
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentUtils;
 
 public class FailCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
-        dispatcher.register(literal("fail")
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext context) {
+        dispatcher.register(Commands.literal("fail")
                 .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
-                .then(argument("message", ComponentArgument.textComponent(buildContext))
-                        .executes(new FailCommand.FailCustomExecutor()))
-        );
+                .executes(_ -> fail())
+                .then(Commands.argument("message", ComponentArgument.textComponent(context))
+                        .executes(FailCommand::fail)));
     }
 
-    static class FailCustomExecutor implements CustomCommandExecutor.CommandAdapter<CommandSourceStack> {
-        public void run(CommandSourceStack sourceStack, ContextChain<CommandSourceStack> chain, ChainModifiers modifiers, ExecutionControl<CommandSourceStack> execution) {
-            CommandContext<CommandSourceStack> ctx = chain.getTopContext().copyFor(sourceStack);
-            GameTestHelper helper = ((PackTestSourceStack)sourceStack).packtest$getHelper();
-            try {
-                if (helper != null) {
-                    helper.fail(ComponentArgument.getResolvedComponent(ctx, "message"));
-                }
-            } catch (CommandSyntaxException ignored) {}
-            sourceStack.callback().onFailure();
-            Frame frame = execution.currentFrame();
-            frame.returnFailure();
-            frame.discard();
+    private static int fail() throws CommandSyntaxException {
+        PackTestExecutor.current().fail(Component.literal("Fail command invoked"));
+        return 0;
+    }
+
+    private static int fail(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        Component resolvedMessage;
+        try {
+            resolvedMessage = ComponentArgument.getResolvedComponent(context, "message");
+        } catch (CommandSyntaxException e) {
+            resolvedMessage = ComponentUtils.fromMessage(e.getRawMessage());
         }
+        PackTestExecutor.current().fail(resolvedMessage);
+        return 0;
     }
 }

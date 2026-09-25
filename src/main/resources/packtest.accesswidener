@@ -1,6 +1,10 @@
 accessWidener v2 official
 
 accessible class net/minecraft/core/MappedRegistry$TagSet
-accessible class net/minecraft/gametest/framework/ReportGameListener
-accessible class net/minecraft/gametest/framework/GameTestEvent
+accessible field net/minecraft/commands/arguments/selector/EntitySelector playerName Ljava/lang/String;
 accessible field net/minecraft/gametest/framework/GameTestHelper testInfo Lnet/minecraft/gametest/framework/GameTestInfo;
+accessible method net/minecraft/server/commands/ExecuteCommand checkCustomPredicate (Lnet/minecraft/commands/CommandSourceStack;Lnet/minecraft/core/Holder;)Z
+accessible method net/minecraft/server/commands/ExecuteCommand countItems (Lnet/minecraft/commands/CommandSourceStack;Lnet/minecraft/server/commands/item/ItemAccessor;Lnet/minecraft/commands/arguments/SlotSourceArgument$Result;Ljava/util/function/Predicate;)I
+accessible method net/minecraft/server/commands/ExecuteCommand checkRegions (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/BlockPos;Z)Ljava/util/OptionalInt;
+accessible method net/minecraft/server/commands/ExecuteCommand countSlots (Lnet/minecraft/commands/CommandSourceStack;Lnet/minecraft/server/commands/item/ItemAccessor;Lnet/minecraft/commands/arguments/SlotSourceArgument$Result;)I
+accessible method net/minecraft/server/commands/ExecuteCommand isChunkLoaded (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/core/BlockPos;)Z

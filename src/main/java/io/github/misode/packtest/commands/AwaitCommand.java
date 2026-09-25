@@ -2,32 +2,33 @@ package io.github.misode.packtest.commands;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.misode.packtest.PackTestExecutor;
+import io.github.misode.packtest.commands.assertions.Assertion;
+import io.github.misode.packtest.commands.assertions.Assertions;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.TimeArgument;
 
-import java.util.function.Function;
-
-import static net.minecraft.commands.Commands.argument;
-import static net.minecraft.commands.Commands.literal;
-
 public class AwaitCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
-        LiteralArgumentBuilder<CommandSourceStack> awaitBuilder = literal("await")
-                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS));
-        addConditions(awaitBuilder, buildContext, predicate -> new AssertCommand.AssertCustomExecutor(true, predicate));
-        LiteralArgumentBuilder<CommandSourceStack> notBuilder = literal("not");
-        addConditions(notBuilder, buildContext, predicate -> new AssertCommand.AssertCustomExecutor(false, predicate));
-        awaitBuilder = awaitBuilder.then(notBuilder);
-        dispatcher.register(awaitBuilder);
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext context) {
+        Assertion.Mode plain = new Assertion.Mode(false, false);
+        Assertion.Mode not = new Assertion.Mode(false, true);
+
+        dispatcher.register(Assertions.build(dispatcher, context, plain, Commands.literal("await")
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .then(Assertions.build(dispatcher, context, not, Commands.literal("not")))
+                .then(Commands.literal("delay")
+                        .then(Commands.argument("time", TimeArgument.time())
+                                .executes(AwaitCommand::delay)))));
     }
 
-    public static void addConditions(LiteralArgumentBuilder<CommandSourceStack> builder, CommandBuildContext buildContext, Function<AssertCommand.AssertPredicate, Command<CommandSourceStack>> expect) {
-        AssertCommand.addConditions(builder, buildContext, expect);
-        builder.then(literal("delay")
-                .then(argument("time", TimeArgument.time())
-                        .executes(expect.apply(ctx -> AssertCommand.err("Timed out")))));
+    private static int delay(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        int time = IntegerArgumentType.getInteger(context, "time");
+        PackTestExecutor.current().await(time);
+        return Command.SINGLE_SUCCESS;
     }
 }

@@ -10,7 +10,6 @@ import com.mojang.brigadier.exceptions.Dynamic2CommandExceptionType;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import com.mojang.brigadier.suggestion.SuggestionProvider;
-import io.github.misode.packtest.PackTestPlayerName;
 import io.github.misode.packtest.dummy.Dummy;
 import net.minecraft.advancements.triggers.CriteriaTriggers;
 import net.minecraft.commands.CommandSourceStack;
@@ -38,7 +37,7 @@ import static net.minecraft.commands.Commands.literal;
 
 public class DummyCommand {
 
-    public static final SuggestionProvider<CommandSourceStack> SUGGEST_DIRECTION = (ctx, builder) -> {
+    public static final SuggestionProvider<CommandSourceStack> SUGGEST_DIRECTION = (_, builder) -> {
         for (var d : Direction.values()) {
             builder.suggest(d.getName());
         }
@@ -150,7 +149,7 @@ public class DummyCommand {
 
     private static int spawn(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         EntitySelector selector = ctx.getArgument("dummy", EntitySelector.class);
-        String name = ((PackTestPlayerName)selector).packtest$getPlayerName();
+        String name = selector.playerName;
         if (name == null) {
             throw ERROR_NO_NAME.create();
         }

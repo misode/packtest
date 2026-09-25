@@ -32,7 +32,7 @@ public class GameTestServerMixin {
     @Shadow @Nullable private MultipleTestTracker testTracker;
 
     @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false, shift = At.Shift.AFTER))
-    private void tickServer(BooleanSupplier booleanSupplier, CallbackInfo ci) {
+    private void tickServer(BooleanSupplier haveTime, CallbackInfo ci) {
         List<LoadDiagnostics.Diagnostic> errors = LoadDiagnostics.loadErrors();
         if (!errors.isEmpty()) {
             LOGGER.info("{} resources failed to load :(", errors.size());

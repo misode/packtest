@@ -5,106 +5,24 @@ import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.context.ContextChain;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import io.github.misode.packtest.dummy.Dummy;
-import net.minecraft.commands.CommandResultCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.TimeArgument;
-import net.minecraft.commands.arguments.coordinates.Coordinates;
-import net.minecraft.commands.arguments.coordinates.Vec3Argument;
-import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderGetter;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.*;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.phys.Vec2;
-import net.minecraft.world.phys.Vec3;
 
 import java.util.*;
 
 public record PackTestFunction(List<Step> steps, Map<String, String> directives) {
     public void run(GameTestHelper helper) {
-        CommandSourceStack source = this.createCommandSourceStack(helper);
-
-        ChatListener chatListener = new ChatListener();
-        ((PackTestInfo)((PackTestHelper)helper).packtest$getInfo()).packtest$setChatListener(chatListener);
-        helper.onEachTick(chatListener::reset);
-
-        GameTestInfo testInfo = ((PackTestHelper)helper).packtest$getInfo();
-        GameTestSequence sequence = helper.startSequence();
-        for (Step step : this.steps) {
-            if (step.command.startsWith("await delay ")) {
-                try {
-                    String timeArgument = step.command.substring("await delay ".length());
-                    int ticks = TimeArgument.time().parse(new StringReader(timeArgument));
-                    ((PackTestSequence)sequence).packtest$thenIdle(ticks, step.line, timeArgument);
-                } catch (CommandSyntaxException e) {
-                    throw new LineNumberException(Component.literal("Whilst parsing command: " + e.getMessage()), 0, step.line);
-                }
-                continue;
-            }
-            Runnable runStep = () -> {
-                if (testInfo.isDone() || testInfo.hasFailed()) {
-                    return;
-                }
-                try {
-                    Commands.executeCommandInContext(source,ctx ->
-                            ExecutionContext.queueInitialCommandExecution(ctx, step.command, step.chain, source, CommandResultCallback.EMPTY));
-                } catch (GameTestAssertException e) {
-                    throw new LineNumberException(((PackTestAssertException)e).packtest$getMessage(), ((PackTestAssertException)e).packtest$getTick(), step.line);
-                }
-            };
-            if (step.command.stripLeading().startsWith("await ")) {
-                sequence.thenWaitUntil(runStep);
-            } else {
-                sequence.thenExecute(runStep);
-            }
-        }
-        sequence.thenSucceed();
-    }
-
-    private CommandSourceStack createCommandSourceStack(GameTestHelper helper) {
-        CommandSourceStack source = helper.getLevel().getServer().createCommandSourceStack()
-                .withLevel(helper.getLevel())
-                .withPosition(helper.absoluteVec(Vec3.ZERO))
-                .withSuppressedOutput();
-        ((PackTestSourceStack) source).packtest$setHelper(helper);
-
-        Optional<Coordinates> coordinates = this.getDummyPos();
-        if (coordinates.isPresent()) {
-            try {
-                Vec3 pos = coordinates.get().getPosition(source);
-                Vec2 rot = coordinates.get().getRotation(source);
-                Dummy dummy = Dummy.createRandom(helper.getLevel(), pos, rot);
-                dummy.setOnGround(true); // little hack because we know the dummy will be on the ground
-                source = source.withEntity(dummy);
-            } catch (IllegalArgumentException e) {
-                helper.fail(Component.literal("Failed to initialize test with dummy"));
-            }
-        }
-
-        return source;
-    }
-
-    private Optional<Coordinates> getDummyPos() {
-        String dummyValue = this.directives.get("dummy");
-        if (dummyValue == null) {
-            return Optional.empty();
-        }
-        if (dummyValue.equals("true")) {
-            dummyValue = "~0.5 ~ ~0.5";
-        }
-        try {
-            return Optional.of(Vec3Argument.vec3().parse(new StringReader(dummyValue)));
-        } catch (CommandSyntaxException e) {
-            return Optional.empty();
-        }
+        PackTestExecutor executor = new PackTestExecutor(helper, this.maxTicks());
+        executor.run(this);
     }
 
     public TestData<Holder<TestEnvironmentDefinition<?>>> getTestData(HolderGetter.Provider registries) {
@@ -113,10 +31,14 @@ public record PackTestFunction(List<Step> steps, Map<String, String> directives)
         Holder<TestEnvironmentDefinition<?>> environment = environments.getOrThrow(ResourceKey.create(Registries.TEST_ENVIRONMENT, environmentId));
         ResourceKey<Level> dimension = Level.OVERWORLD; // TODO: make configurable?
         Identifier structure = Optional.ofNullable(this.directives.get("template")).map(Identifier::parse).orElse(Identifier.withDefaultNamespace("empty"));
-        int maxTicks = Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
+        int maxTicks = this.maxTicks();
         boolean required = Optional.ofNullable(this.directives.get("optional")).map(s -> !Boolean.parseBoolean(s)).orElse(true);
         boolean skyAccess = Optional.ofNullable(this.directives.get("skyaccess")).map(Boolean::parseBoolean).orElse(false);
         return new TestData<>(environment, dimension, structure, maxTicks, 0, required, Rotation.NONE, false, 1, 1, skyAccess, 0);
+    }
+
+    private int maxTicks() {
+        return Optional.ofNullable(this.directives.get("timeout")).map(Integer::parseInt).orElse(100);
     }
 
     public static PackTestFunction fromLines(
