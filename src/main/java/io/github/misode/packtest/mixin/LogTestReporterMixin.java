@@ -1,8 +1,11 @@
 package io.github.misode.packtest.mixin;
 
 import io.github.misode.packtest.PackTestException;
+import io.github.misode.packtest.PackTestFunction;
+import io.github.misode.packtest.PackTestLibrary;
 import io.github.misode.packtest.PackTest;
 import net.minecraft.util.Util;
+import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestInfo;
 import net.minecraft.gametest.framework.LogTestReporter;
 import org.slf4j.Logger;
@@ -44,6 +47,16 @@ public class LogTestReporterMixin {
                 LOGGER.warn(PackTest.wrapWarning("(optional) {} failed{}! {}"), testName, lineNumber, message);
             }
             ci.cancel();
+        }
+    }
+
+    @Inject(method = "onTestSuccess", at = @At(value = "HEAD"))
+    private void onTestSuccess(GameTestInfo testInfo, CallbackInfo ci) {
+        BlockPos blockPos = testInfo.getTestBlockPos();
+        if (blockPos == null) {
+            LOGGER.info("{} passed on tick {}!" , testInfo.id(), testInfo.getTick());
+        } else {
+            LOGGER.info("{} passed at {} on tick {}!" , testInfo.id(), blockPos.toShortString(), testInfo.getTick());
         }
     }
 }
