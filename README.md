@@ -127,8 +127,15 @@ Fake players can be spawned using the `/dummy` command. Dummies won't save or lo
 Tests can be customized by placing certain directives as special comments at the start of the test function.
 
 * `@environment`: the test environment for this test, defaults to `minecraft:default`
-* `@template`: the resource location of a structure template to use for the test, defaults to `minecraft:empty`, which is an empty 1x1x1 structure
-* `@timeout`: an integer specifying the timeout, defaults to `100`
+* `@dimension`: the dimension that this test should run in, defaults to `minecraft:overworld`
+* `@template` (alias `@structure`): the resource location of a structure template to use for the test, defaults to `minecraft:empty`, which is an empty 1x1x1 structure
+* `@timeout` (alias `@max_ticks`): an integer specifying the timeout, defaults to `100`
+* `@setup_ticks`: Ticks the environment runs before the test starts, defaults to `0`
 * `@optional`: whether this test is allowed to fail, defaults to `false`, if there is no value after the directive it is considered as `true`
-* `@skyaccess`: whether this test needs sky access, defaults to `false`, which will place barrier blocks above the test
-* `@dummy`: whether to spawn a dummy at the start of the test and set `@s` to this dummy, taking a position which defaults to `~0.5 ~ ~0.5`
+* `@skyaccess` (alias `@sky_access`): whether this test needs sky access, defaults to `false`, which will place barrier blocks above the test
+* `@rotation`: Rotation of the test structure, one of `-90`, `0`, `90`, `180`
+* `@manual` (alias `@manual_only`): Whether this test will only run when manually invoked, defaults to `false`
+* `@max_attempts`: How many times a flaky test may run before it fails, defaults to `1`
+* `@required_successes`: Amount of passing runs needed, used together with `@max_attempts`, defaults to `1`
+* `@padding`: Empty space around the structure, to keep tests apart, defaults to `0`
+* `@dummy`: whether to spawn a dummy at the start of the test and set `@s` to this dummy, taking a position which defaults to `~ ~ ~`
