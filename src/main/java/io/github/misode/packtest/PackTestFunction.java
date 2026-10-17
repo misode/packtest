@@ -9,12 +9,13 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.functions.CommandFunction;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.resources.Identifier;
 
 import java.util.*;
 
 public record PackTestFunction(List<Step> steps, PackTestDirectives directives) {
-    public void run(GameTestHelper helper) {
-        PackTestExecutor executor = new PackTestExecutor(helper, this.directives.maxTicks());
+    public void run(GameTestHelper helper, Identifier id) {
+        PackTestExecutor executor = new PackTestExecutor(helper, this.directives.maxTicks(), id);
         executor.run(this);
     }
 

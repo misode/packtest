@@ -11,6 +11,7 @@ import net.minecraft.commands.arguments.coordinates.Coordinates;
 import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
@@ -32,10 +33,12 @@ public class PackTestExecutor {
     private final long chatSequence = ChatRecorder.sequence();
     private int line = 0;
     private boolean done = false;
+    public final Identifier testId;
 
-    public PackTestExecutor(GameTestHelper helper, int timeout) {
+    public PackTestExecutor(GameTestHelper helper, int timeout, Identifier testId) {
         this.helper = helper;
         this.timeout = timeout;
+        this.testId = testId;
     }
 
     public static PackTestExecutor current() throws CommandSyntaxException {

@@ -73,7 +73,7 @@ public class PackTestRegistries {
                     instances.register(instanceKey, new FunctionGameTestInstance(functionKey, testData), RegistrationInfo.BUILT_IN);
                 }
 
-                functions.register(functionKey, test::run, RegistrationInfo.BUILT_IN);
+                functions.register(functionKey, helper -> test.run(helper, id), RegistrationInfo.BUILT_IN);
                 registeredFunctionKeys.add(functionKey);
             } catch (Exception e) {
                 PackTest.LOGGER.error("Failed to load test {}", id, e);

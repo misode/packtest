@@ -92,6 +92,7 @@ public class PackTest implements ModInitializer {
 		AssertCommand.register(dispatcher, buildContext);
 		AwaitCommand.register(dispatcher, buildContext);
 		FailCommand.register(dispatcher, buildContext);
+		LogCommand.register(dispatcher, buildContext);
 		DummyCommand.register(dispatcher);
 		SucceedCommand.register(dispatcher);
 	}
