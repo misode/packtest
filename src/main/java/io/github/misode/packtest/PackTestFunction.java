@@ -53,7 +53,7 @@ public record PackTestFunction(List<Step> steps, PackTestDirectives directives) 
             }
 
             try {
-                steps.add(new Step(command, parseCommand(dispatcher, context, command), line));
+                steps.add(parseCommand(dispatcher, context, command, line));
             } catch (CommandSyntaxException e) {
                 throw new IllegalArgumentException("Whilst parsing command on line " + line + ": " + e.getMessage());
             }
@@ -77,17 +77,24 @@ public record PackTestFunction(List<Step> steps, PackTestDirectives directives) 
         }
     }
 
-    private static ContextChain<CommandSourceStack> parseCommand(
+    private static Step parseCommand(
             CommandDispatcher<CommandSourceStack> dispatcher,
             CommandSourceStack context,
-            String command) throws CommandSyntaxException {
+            String command,
+            int line) throws CommandSyntaxException {
         ParseResults<CommandSourceStack> parseResults = dispatcher.parse(command, context);
         Commands.validateParseResults(parseResults);
-        return ContextChain.tryFlatten(parseResults.getContext().build(command))
+        ContextChain<CommandSourceStack> chain = ContextChain.tryFlatten(parseResults.getContext().build(command))
                 .orElseThrow(() -> CommandSyntaxException.BUILT_IN_EXCEPTIONS
                         .dispatcherUnknownCommand()
                         .createWithContext(parseResults.getReader()));
+        String commandName = chain.getTopContext().getLastChild().getNodes().stream()
+                .map(n -> n.getNode().getName())
+                .filter(n -> !n.isEmpty())
+                .findFirst()
+                .orElse("");
+        return new Step(command, chain, line, commandName);
     }
 
-    public record Step(String command, ContextChain<CommandSourceStack> chain, int line) {}
+    public record Step(String command, ContextChain<CommandSourceStack> chain, int line, String commandName) {}
 }

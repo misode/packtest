@@ -31,6 +31,7 @@ public class PackTestExecutor {
     private final int timeout;
     private final long chatSequence = ChatRecorder.sequence();
     private int line = 0;
+    private String commandName = "";
     private boolean done = false;
 
     public PackTestExecutor(GameTestHelper helper, int timeout) {
@@ -59,6 +60,7 @@ public class PackTestExecutor {
                 while (!steps.isEmpty() && !this.done && this.awaits.isEmpty()) {
                     PackTestFunction.Step step = steps.poll();
                     this.line = step.line();
+                    this.commandName = step.commandName();
                     Commands.executeCommandInContext(source, ctx ->
                             ExecutionContext.queueInitialCommandExecution(ctx, step.command(), step.chain(), source, CommandResultCallback.EMPTY));
                 }
@@ -144,7 +146,7 @@ public class PackTestExecutor {
     }
 
     private PackTestException failure(Component message) {
-        return new PackTestException(message, (int)this.helper.getTick(), this.line);
+        return new PackTestException(message, (int)this.helper.getTick(), this.line, this.commandName);
     }
 
     private boolean isLastTick() {

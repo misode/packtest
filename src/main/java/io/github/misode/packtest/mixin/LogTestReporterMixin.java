@@ -31,7 +31,7 @@ public class LogTestReporterMixin {
         if (PackTest.isAutoEnabled()) {
             String testName = testInfo.id().toString();
             String lineNumber = testInfo.getError() instanceof PackTestException err
-                    ? " on line " + err.getLine()
+                    ? err.getLine()
                     : "";
             String message = Util.describeError(testInfo.getError());
             if (testInfo.isRequired()) {
