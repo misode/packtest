@@ -3,11 +3,17 @@ package io.github.misode.packtest.mixin;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
 import io.github.misode.packtest.LoadDiagnostics;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.*;
+import net.minecraft.server.WorldLoader;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.border.WorldBorder;
+import net.minecraft.world.level.dimension.LevelStem;
+import net.minecraft.world.level.levelgen.WorldDimensions;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.spongepowered.asm.mixin.Final;
@@ -22,14 +28,21 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 /**
+ * Load data pack dimensions in test world.
  * Prints summary of resources that failed to load.
  * Fails when no tests were loaded.
+ * Guarantee that the tests run inside the world border.
  */
 @Mixin(GameTestServer.class)
 public class GameTestServerMixin {
     @Shadow @Final private static Logger LOGGER;
 
     @Shadow @Nullable private MultipleTestTracker testTracker;
+
+    @WrapOperation(method = "lambda$create$1", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/levelgen/WorldDimensions;bake(Lnet/minecraft/core/Registry;)Lnet/minecraft/world/level/levelgen/WorldDimensions$Complete;"))
+    private static WorldDimensions.Complete addDatapackLevels(WorldDimensions worldDimensions, Registry<LevelStem> baseDimensions, Operation<WorldDimensions.Complete> original, @Local(argsOnly = true, name = "context") WorldLoader.DataLoadContext context) {
+        return original.call(worldDimensions, context.datapackDimensions().lookupOrThrow(Registries.LEVEL_STEM));
+    }
 
     @Inject(method = "tickServer", at = @At(value = "INVOKE", target = "Lorg/slf4j/Logger;info(Ljava/lang/String;Ljava/lang/Object;Ljava/lang/Object;)V", remap = false, shift = At.Shift.AFTER))
     private void tickServer(BooleanSupplier haveTime, CallbackInfo ci) {
