@@ -88,6 +88,9 @@ jobs:
 ### `succeed`
 * `succeed`: always succeeds the current test and returns from the function
 
+### `log`
+* `log <text component>`: logs a message to the console but not to chat
+
 ### `assert`
 * `assert <condition>`: if condition is unsuccessful, fails the current test and returns from the function
 * `assert not <condition>`: if condition is successful, fails the current test and returns from the function
