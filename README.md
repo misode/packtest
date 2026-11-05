@@ -118,9 +118,11 @@ Fake players can be spawned using the `/dummy` command. Dummies won't save or lo
 * `dummy <name> sneak [true|false]`: makes the dummy hold shift or un-shift (not the same as currently crouching)
 * `dummy <name> sprint [true|false]`: makes the dummy sprint or un-sprint
 * `dummy <name> drop [all]`: makes the dummy drop the current mainhand, either one item or the entire stack
+* `dummy <name> drop from <slot> [all]`: makes the dummy drop from an inventory slot, either one item or the entire stack
 * `dummy <name> swap`: makes the dummy swap its mainhand and offhand
-* `dummy <name> selectslot`: makes the dummy select a different hotbar slot
-* `dummy <name> use item`: makes the dummy use its hand item, either mainhand or offhand
+* `dummy <name> selectslot <slot>`: makes the dummy select a different hotbar slot, from `1` to `9`
+* `dummy <name> mainhand <slot>`: makes the dummy select a different hotbar slot, from `0` to `8`
+* `dummy <name> use [item]`: makes the dummy use its hand item, either mainhand or offhand
 * `dummy <name> use block <pos> [<direction>]`: makes the dummy use its hand item on a block position
 * `dummy <name> use entity <entity>`: makes the dummy use its hand item on an entity
 * `dummy <name> attack <entity>`: makes the dummy attack an entity with its mainhand

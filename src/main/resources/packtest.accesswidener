@@ -1,6 +1,11 @@
 accessWidener v2 official
 
 accessible class net/minecraft/core/MappedRegistry$TagSet
+accessible class net/minecraft/commands/arguments/NbtPathArgument$Node
+accessible class net/minecraft/commands/arguments/NbtPathArgument$MatchObjectNode
+accessible field net/minecraft/commands/arguments/NbtPathArgument$MatchObjectNode name Ljava/lang/String;
+accessible field net/minecraft/commands/arguments/NbtPathArgument$NbtPath nodes [Lnet/minecraft/commands/arguments/NbtPathArgument$Node;
+accessible field net/minecraft/commands/arguments/NbtPathArgument$NbtPath nodeToOriginalPosition Lit/unimi/dsi/fastutil/objects/Object2IntMap;
 accessible field net/minecraft/commands/arguments/selector/EntitySelector playerName Ljava/lang/String;
 accessible field net/minecraft/gametest/framework/GameTestHelper testInfo Lnet/minecraft/gametest/framework/GameTestInfo;
 accessible method net/minecraft/server/commands/ExecuteCommand checkCustomPredicate (Lnet/minecraft/commands/CommandSourceStack;Lnet/minecraft/core/Holder;)Z
