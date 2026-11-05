@@ -1,6 +1,7 @@
 accessWidener v2 official
 
 accessible class net/minecraft/core/MappedRegistry$TagSet
+accessible field net/minecraft/commands/Commands CURRENT_EXECUTION_CONTEXT Ljava/lang/ThreadLocal;
 accessible field net/minecraft/commands/arguments/selector/EntitySelector playerName Ljava/lang/String;
 accessible field net/minecraft/gametest/framework/GameTestHelper testInfo Lnet/minecraft/gametest/framework/GameTestInfo;
 accessible method net/minecraft/server/commands/ExecuteCommand checkCustomPredicate (Lnet/minecraft/commands/CommandSourceStack;Lnet/minecraft/core/Holder;)Z

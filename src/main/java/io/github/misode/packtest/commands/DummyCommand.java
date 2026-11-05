@@ -1,5 +1,6 @@
 package io.github.misode.packtest.commands;
 
+import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
@@ -18,6 +19,7 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.arguments.selector.EntitySelector;
+import net.minecraft.commands.execution.ExecutionContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -88,49 +90,61 @@ public class DummyCommand {
                 .then(argument("dummy", EntityArgument.entity())
                         .suggests(SUGGEST_DUMMY_NAME)
                         .then(literal("spawn")
-                                .executes(DummyCommand::spawn))
+                                .executes(asPacket(DummyCommand::spawn)))
                         .then(literal("leave")
-                                .executes(DummyCommand::leave))
+                                .executes(asPacket(DummyCommand::leave)))
                         .then(literal("respawn")
-                                .executes(DummyCommand::respawn))
+                                .executes(asPacket(DummyCommand::respawn)))
                         .then(literal("jump")
-                                .executes(DummyCommand::jump))
+                                .executes(asPacket(DummyCommand::jump)))
                         .then(literal("sneak")
                                 .then(argument("active", BoolArgumentType.bool())
-                                    .executes(DummyCommand::sneak)))
+                                    .executes(asPacket(DummyCommand::sneak))))
                         .then(literal("sprint")
                                 .then(argument("active", BoolArgumentType.bool())
-                                        .executes(DummyCommand::sprint)))
+                                        .executes(asPacket(DummyCommand::sprint))))
                         .then(literal("drop")
-                                .executes(ctx -> dropMainhand(ctx, false))
+                                .executes(asPacket(ctx -> dropMainhand(ctx, false)))
                                 .then(literal("all")
-                                        .executes(ctx -> dropMainhand(ctx, true))))
+                                        .executes(asPacket(ctx -> dropMainhand(ctx, true)))))
                         .then(literal("swap")
-                                .executes(DummyCommand::swap))
+                                .executes(asPacket(DummyCommand::swap)))
                         .then(literal("selectslot")
                                 .then(argument("slot", IntegerArgumentType.integer(1, 9))
-                                    .executes(DummyCommand::selectSlot)))
+                                    .executes(asPacket(DummyCommand::selectSlot))))
                         .then(literal("use")
                                 .then(literal("item")
-                                        .executes(DummyCommand::useItem))
+                                        .executes(asPacket(DummyCommand::useItem)))
                                 .then(literal("block")
                                         .then(argument("pos", Vec3Argument.vec3(false))
-                                                .executes(ctx -> useBlock(ctx, Direction.UP))
+                                                .executes(asPacket(ctx -> useBlock(ctx, Direction.UP)))
                                                 .then(argument("direction", StringArgumentType.word())
                                                         .suggests(SUGGEST_DIRECTION)
-                                                        .executes(ctx -> useBlock(ctx, Direction.byName(StringArgumentType.getString(ctx, "direction")))))))
+                                                        .executes(asPacket(ctx -> useBlock(ctx, Direction.byName(StringArgumentType.getString(ctx, "direction"))))))))
                                 .then(literal("entity")
                                         .then(argument("entity", EntityArgument.entity())
-                                                .executes(ctx -> useEntity(ctx, null))
+                                                .executes(asPacket(ctx -> useEntity(ctx, null)))
                                                 .then(argument("pos", Vec3Argument.vec3(false))
-                                                        .executes(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos")))))))
+                                                        .executes(asPacket(ctx -> useEntity(ctx, Vec3Argument.getVec3(ctx, "pos"))))))))
                         .then(literal("attack")
                                 .then(argument("entity", EntityArgument.entity())
-                                        .executes(DummyCommand::attackEntity)))
+                                        .executes(asPacket(DummyCommand::attackEntity))))
                         .then(literal("mine")
                                 .then(argument("pos", BlockPosArgument.blockPos())
-                                        .executes(DummyCommand::mineBlock)))
+                                        .executes(asPacket(DummyCommand::mineBlock))))
         ));
+    }
+
+    private static Command<CommandSourceStack> asPacket(Command<CommandSourceStack> action) {
+        return ctx -> {
+            ExecutionContext<CommandSourceStack> running = Commands.CURRENT_EXECUTION_CONTEXT.get();
+            Commands.CURRENT_EXECUTION_CONTEXT.set(null);
+            try {
+                return action.run(ctx);
+            } finally {
+                Commands.CURRENT_EXECUTION_CONTEXT.set(running);
+            }
+        };
     }
 
     private static Dummy getDummy(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
