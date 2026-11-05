@@ -15,6 +15,7 @@ import net.minecraft.advancements.triggers.CriteriaTriggers;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
+import net.minecraft.commands.arguments.SlotArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.arguments.selector.EntitySelector;
@@ -26,7 +27,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.players.PlayerList;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.SwingAnimation;
 import net.minecraft.world.phys.BlockHitResult;
@@ -104,13 +107,22 @@ public class DummyCommand {
                         .then(literal("drop")
                                 .executes(ctx -> dropMainhand(ctx, false))
                                 .then(literal("all")
-                                        .executes(ctx -> dropMainhand(ctx, true))))
+                                        .executes(ctx -> dropMainhand(ctx, true)))
+                                .then(literal("from")
+                                        .then(argument("slot", SlotArgument.slot())
+                                                .executes(ctx -> dropFromSlot(ctx, false))
+                                                .then(literal("all")
+                                                        .executes(ctx -> dropFromSlot(ctx, true))))))
                         .then(literal("swap")
                                 .executes(DummyCommand::swap))
                         .then(literal("selectslot")
                                 .then(argument("slot", IntegerArgumentType.integer(1, 9))
-                                    .executes(DummyCommand::selectSlot)))
+                                    .executes(ctx -> selectSlot(ctx, 1))))
+                        .then(literal("mainhand")
+                                .then(argument("slot", IntegerArgumentType.integer(0, 8))
+                                    .executes(ctx -> selectSlot(ctx, 0))))
                         .then(literal("use")
+                                .executes(DummyCommand::useItem)
                                 .then(literal("item")
                                         .executes(DummyCommand::useItem))
                                 .then(literal("block")
@@ -224,13 +236,28 @@ public class DummyCommand {
         return 1;
     }
 
-    private static int selectSlot(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+    private static int dropFromSlot(CommandContext<CommandSourceStack> ctx, boolean stack) throws CommandSyntaxException {
+        Dummy dummy = getDummy(ctx);
+        int slot = SlotArgument.getSlot(ctx, "slot");
+        SlotAccess access = dummy.getSlot(slot);
+        if (access == null) {
+            return 0;
+        }
+        ItemStack current = access.get();
+        ItemStack removed = current.split(stack ? current.count() : 1);
+        access.set(current);
+        dummy.containerMenu.findSlot(dummy.getInventory(), slot).ifPresent(i -> dummy.containerMenu.setRemoteSlot(i, access.get()));
+        dummy.drop(removed, true, Prediction.PREDICTED);
+        return removed.count();
+    }
+
+    private static int selectSlot(CommandContext<CommandSourceStack> ctx, int first) throws CommandSyntaxException {
         Dummy dummy = getDummy(ctx);
         int slot = IntegerArgumentType.getInteger(ctx, "slot");
-        if (dummy.getInventory().getSelectedSlot() == slot - 1) {
+        if (dummy.getInventory().getSelectedSlot() == slot - first) {
             throw ERROR_SLOT_SELECTED.create(dummy.getUsername(), slot);
         }
-        dummy.getInventory().setSelectedSlot(slot - 1);
+        dummy.getInventory().setSelectedSlot(slot - first);
         return 1;
     }
 
